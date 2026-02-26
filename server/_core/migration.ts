@@ -110,8 +110,12 @@ export async function runMigrationIfNeeded(): Promise<void> {
       }
     }
 
-    // ── Step 3: Add nodeId column to print_data ────────────────────────────
+    // ── Step 3: Add nodeId column to print_data, make paperSizeId nullable ──
     await sql`ALTER TABLE print_data ADD COLUMN IF NOT EXISTS "nodeId" INTEGER`;
+    // paperSizeId must be nullable so new inserts (which only provide nodeId) don't fail
+    try {
+      await sql`ALTER TABLE print_data ALTER COLUMN "paperSizeId" DROP NOT NULL`;
+    } catch { /* already nullable or column doesn't exist */ }
 
     // ── Step 4: Map print_data.nodeId from old paperSizeId ─────────────────
     // Check if temp tracking cols still exist in nodes (needed for mapping)
