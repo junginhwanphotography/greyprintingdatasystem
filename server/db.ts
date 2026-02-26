@@ -417,7 +417,7 @@ export async function copyPaperType(id: number, targetPaperBrandId: number): Pro
     name: src.name, description: src.description, paperBrandId: targetPaperBrandId, sortOrder: src.sortOrder,
   }).returning({ id: paperTypes.id });
   const children = await db.select().from(paperSizes).where(eq(paperSizes.paperTypeId, id));
-  for (const child of children) await copyPaperSize(child.id, newRow.id);
+  await Promise.all(children.map((child) => copyPaperSize(child.id, newRow.id)));
   return newRow.id;
 }
 
@@ -430,7 +430,7 @@ export async function copyPaperBrand(id: number, targetFilmTypeId: number): Prom
     name: src.name, description: src.description, filmTypeId: targetFilmTypeId, sortOrder: src.sortOrder,
   }).returning({ id: paperBrands.id });
   const children = await db.select().from(paperTypes).where(eq(paperTypes.paperBrandId, id));
-  for (const child of children) await copyPaperType(child.id, newRow.id);
+  await Promise.all(children.map((child) => copyPaperType(child.id, newRow.id)));
   return newRow.id;
 }
 
@@ -443,7 +443,7 @@ export async function copyFilmType(id: number, targetFormatId: number): Promise<
     name: src.name, description: src.description, formatId: targetFormatId, sortOrder: src.sortOrder, iso: src.iso,
   }).returning({ id: filmTypes.id });
   const children = await db.select().from(paperBrands).where(eq(paperBrands.filmTypeId, id));
-  for (const child of children) await copyPaperBrand(child.id, newRow.id);
+  await Promise.all(children.map((child) => copyPaperBrand(child.id, newRow.id)));
   return newRow.id;
 }
 
@@ -456,7 +456,7 @@ export async function copyFormat(id: number, targetLensGroupId: number): Promise
     name: src.name, description: src.description, lensGroupId: targetLensGroupId, sortOrder: src.sortOrder,
   }).returning({ id: formats.id });
   const children = await db.select().from(filmTypes).where(eq(filmTypes.formatId, id));
-  for (const child of children) await copyFilmType(child.id, newRow.id);
+  await Promise.all(children.map((child) => copyFilmType(child.id, newRow.id)));
   return newRow.id;
 }
 
@@ -469,7 +469,7 @@ export async function copyLensGroup(id: number, targetCameraTypeId: number): Pro
     name: src.name, description: src.description, cameraTypeId: targetCameraTypeId, sortOrder: src.sortOrder,
   }).returning({ id: lensGroups.id });
   const children = await db.select().from(formats).where(eq(formats.lensGroupId, id));
-  for (const child of children) await copyFormat(child.id, newRow.id);
+  await Promise.all(children.map((child) => copyFormat(child.id, newRow.id)));
   return newRow.id;
 }
 
@@ -482,7 +482,7 @@ export async function copyCameraType(id: number): Promise<number> {
     name: `${src.name} (복사본)`, description: src.description, sortOrder: src.sortOrder,
   }).returning({ id: cameraTypes.id });
   const children = await db.select().from(lensGroups).where(eq(lensGroups.cameraTypeId, id));
-  for (const child of children) await copyLensGroup(child.id, newRow.id);
+  await Promise.all(children.map((child) => copyLensGroup(child.id, newRow.id)));
   return newRow.id;
 }
 

@@ -107,8 +107,9 @@ export default function HierarchyList({
     setDuplicatingId(item.id);
     try {
       await onDuplicateItem(item);
-    } catch {
-      alert("복사에 실패했습니다.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`복사에 실패했습니다.\n${msg}`);
     } finally {
       setDuplicatingId(null);
     }
