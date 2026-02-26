@@ -22,7 +22,6 @@ export default function FilmTypes() {
       breadcrumb={[cameraName, lensName, formatName]}
       items={films}
       isLoading={isLoading}
-      entityType="film"
       onItemPress={(item) =>
         navigate(`/browse/paper-brands/${item.id}`, {
           state: { cameraName, lensName, formatName, filmName: item.name },
@@ -35,8 +34,8 @@ export default function FilmTypes() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onPasteItem={(clipboardId) =>
-        copyMutation.mutateAsync({ id: clipboardId, formatId: id }).then(() => {})
+      onDuplicateItem={(item) =>
+        copyMutation.mutateAsync({ id: item.id, formatId: id }).then(() => {})
       }
       emptyMessage="필름 종류가 없습니다"
     />

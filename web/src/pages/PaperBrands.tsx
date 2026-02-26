@@ -22,7 +22,6 @@ export default function PaperBrands() {
       breadcrumb={[cameraName, lensName, formatName, filmName]}
       items={brands}
       isLoading={isLoading}
-      entityType="brand"
       onItemPress={(item) =>
         navigate(`/browse/paper-types/${item.id}`, {
           state: { cameraName, lensName, formatName, filmName, brandName: item.name },
@@ -35,8 +34,8 @@ export default function PaperBrands() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onPasteItem={(clipboardId) =>
-        copyMutation.mutateAsync({ id: clipboardId, filmTypeId: id }).then(() => {})
+      onDuplicateItem={(item) =>
+        copyMutation.mutateAsync({ id: item.id, filmTypeId: id }).then(() => {})
       }
       emptyMessage="인화지 브랜드가 없습니다"
     />

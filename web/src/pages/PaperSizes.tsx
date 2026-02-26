@@ -35,7 +35,6 @@ export default function PaperSizes() {
       breadcrumb={[cameraName, lensName, formatName, filmName, brandName, typeName]}
       items={sizes}
       isLoading={isLoading}
-      entityType="size"
       onItemPress={(item) =>
         navigate(`/browse/print-data-list/${item.id}`, {
           state: {
@@ -56,8 +55,8 @@ export default function PaperSizes() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onPasteItem={(clipboardId) =>
-        copyMutation.mutateAsync({ id: clipboardId, paperTypeId: id }).then(() => {})
+      onDuplicateItem={(item) =>
+        copyMutation.mutateAsync({ id: item.id, paperTypeId: id }).then(() => {})
       }
       emptyMessage="인화지 사이즈가 없습니다"
     />

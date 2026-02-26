@@ -21,7 +21,6 @@ export default function Formats() {
       breadcrumb={[cameraName, lensName]}
       items={fmts}
       isLoading={isLoading}
-      entityType="format"
       onItemPress={(item) =>
         navigate(`/browse/film-types/${item.id}`, {
           state: { cameraName, lensName, formatName: item.name },
@@ -34,8 +33,8 @@ export default function Formats() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onPasteItem={(clipboardId) =>
-        copyMutation.mutateAsync({ id: clipboardId, lensGroupId: id }).then(() => {})
+      onDuplicateItem={(item) =>
+        copyMutation.mutateAsync({ id: item.id, lensGroupId: id }).then(() => {})
       }
       emptyMessage="판형이 없습니다"
     />

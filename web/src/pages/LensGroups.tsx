@@ -21,7 +21,6 @@ export default function LensGroups() {
       breadcrumb={[cameraName]}
       items={lenses}
       isLoading={isLoading}
-      entityType="lens"
       onItemPress={(item) =>
         navigate(`/browse/formats/${item.id}`, {
           state: { cameraName, lensName: item.name },
@@ -34,8 +33,8 @@ export default function LensGroups() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onPasteItem={(clipboardId) =>
-        copyMutation.mutateAsync({ id: clipboardId, cameraTypeId: id }).then(() => {})
+      onDuplicateItem={(item) =>
+        copyMutation.mutateAsync({ id: item.id, cameraTypeId: id }).then(() => {})
       }
       emptyMessage="렌즈군이 없습니다"
     />

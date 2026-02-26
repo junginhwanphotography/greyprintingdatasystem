@@ -28,7 +28,6 @@ export default function PaperTypes() {
       breadcrumb={[cameraName, lensName, formatName, filmName, brandName]}
       items={types}
       isLoading={isLoading}
-      entityType="type"
       onItemPress={(item) =>
         navigate(`/browse/paper-sizes/${item.id}`, {
           state: { cameraName, lensName, formatName, filmName, brandName, typeName: item.name },
@@ -41,8 +40,8 @@ export default function PaperTypes() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onPasteItem={(clipboardId) =>
-        copyMutation.mutateAsync({ id: clipboardId, paperBrandId: id }).then(() => {})
+      onDuplicateItem={(item) =>
+        copyMutation.mutateAsync({ id: item.id, paperBrandId: id }).then(() => {})
       }
       emptyMessage="인화지 종류가 없습니다"
     />

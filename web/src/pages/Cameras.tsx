@@ -17,7 +17,6 @@ export default function Cameras() {
       breadcrumb={[]}
       items={cameras}
       isLoading={isLoading}
-      entityType="camera"
       onItemPress={(item) =>
         navigate(`/browse/lens-groups/${item.id}`, { state: { cameraName: item.name } })
       }
@@ -28,8 +27,8 @@ export default function Cameras() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onPasteItem={(clipboardId) =>
-        copyMutation.mutateAsync({ id: clipboardId }).then(() => {})
+      onDuplicateItem={(item) =>
+        copyMutation.mutateAsync({ id: item.id }).then(() => {})
       }
       emptyMessage="카메라 종류가 없습니다"
     />
