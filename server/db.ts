@@ -73,9 +73,15 @@ export async function getUserByOpenId(openId: string) {
 export async function getNodes(parentId: number | null) {
   const db = await getDb();
   if (!db) return memoryStore.getNodes(parentId);
-  const rows = parentId == null
-    ? await db.select().from(nodes).where(isNull(nodes.parentId)).orderBy(asc(nodes.sortOrder), asc(nodes.name))
-    : await db.select().from(nodes).where(eq(nodes.parentId, parentId)).orderBy(asc(nodes.sortOrder), asc(nodes.name));
+  let rows: (typeof nodes.$inferSelect)[];
+  try {
+    rows = parentId == null
+      ? await db.select().from(nodes).where(isNull(nodes.parentId)).orderBy(asc(nodes.sortOrder), asc(nodes.name))
+      : await db.select().from(nodes).where(eq(nodes.parentId, parentId)).orderBy(asc(nodes.sortOrder), asc(nodes.name));
+  } catch (err) {
+    console.warn("[db] getNodes failed (migration may still be running):", err);
+    return [];
+  }
 
   // Attach childCount for each node
   const ids = rows.map((r) => r.id);
@@ -99,8 +105,13 @@ export async function getNodeById(id: number) {
 export async function createNode(data: InsertNode) {
   const db = await getDb();
   if (!db) return memoryStore.createNode(data);
-  const rows = await db.insert(nodes).values(data).returning({ id: nodes.id });
-  return rows[0].id;
+  try {
+    const rows = await db.insert(nodes).values(data).returning({ id: nodes.id });
+    return rows[0].id;
+  } catch (err) {
+    console.error("[db] createNode failed:", err);
+    throw err;
+  }
 }
 
 export async function updateNode(id: number, data: Partial<InsertNode>) {
@@ -243,8 +254,13 @@ export async function getPrintDataById(id: number) {
 export async function getPrintDataList(nodeId: number) {
   const db = await getDb();
   if (!db) return memoryStore.getPrintDataList(nodeId);
-  const rows = await db.select().from(printData).where(eq(printData.nodeId, nodeId));
-  return rows.map((row) => ({ ...row, extraData: parsePrintDataExtra(row) }));
+  try {
+    const rows = await db.select().from(printData).where(eq(printData.nodeId, nodeId));
+    return rows.map((row) => ({ ...row, extraData: parsePrintDataExtra(row) }));
+  } catch (err) {
+    console.warn("[db] getPrintDataList failed:", err);
+    return [];
+  }
 }
 
 export async function getPrintDataListAll() {
@@ -285,7 +301,7 @@ export async function getPrintDataListAll() {
 export async function createPrintData(nodeId: number) {
   const db = await getDb();
   if (!db) return memoryStore.createPrintData(nodeId);
-  const rows = await db.insert(printData).values({ nodeId } as InsertPrintData).returning({ id: printData.id });
+  const rows = await db.insert(printData).values({ nodeId }).returning({ id: printData.id });
   return rows[0].id;
 }
 

@@ -31,7 +31,7 @@ export const nodes = pgTable("nodes", {
 
 export const printData = pgTable("print_data", {
   id: serial("id").primaryKey(),
-  nodeId: integer("nodeId").notNull(),    // was paperSizeId
+  nodeId: integer("nodeId"),    // was paperSizeId — set NOT NULL after migration
 
   title: varchar("title", { length: 255 }),
 
