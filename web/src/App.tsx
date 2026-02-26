@@ -26,7 +26,7 @@ export default function App() {
   if (showSplash) return <Splash />;
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/browse" replace />} />

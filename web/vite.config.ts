@@ -1,8 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
+import * as path from "path";
 
 export default defineConfig({
+  base: "/greyprintingdatasystem/",
   plugins: [react()],
   resolve: {
     alias: {

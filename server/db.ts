@@ -103,7 +103,7 @@ export async function getUserByOpenId(openId: string) {
 // ─── Grey Print Data System Queries ──────────────────────────────────────────
 
 import * as memoryStore from "./_core/memoryStore";
-import { like, asc, desc, leftJoin } from "drizzle-orm";
+import { like, asc, desc } from "drizzle-orm";
 import {
   cameraTypes, lensGroups, formats, filmTypes,
   paperBrands, paperTypes, paperSizes, printData,
@@ -346,7 +346,6 @@ export async function listAllPaperSizesWithPath(): Promise<{ id: number; name: s
   const db = await getDb();
   if (!db) return memoryStore.listAllPaperSizesWithPath();
   const sizes = await db.select().from(paperSizes).orderBy(asc(paperSizes.sortOrder), asc(paperSizes.name));
-  const pathMap = new Map<number, string>();
   const paperTypesData = await db.select().from(paperTypes);
   const paperBrandsData = await db.select().from(paperBrands);
   const filmTypesData = await db.select().from(filmTypes);

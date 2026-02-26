@@ -331,38 +331,32 @@ export default function PrintData() {
                         <FieldRow
                           field={FIELDS[5]}
                           value={fields.developer}
-                          isEditing={true}
                           onChange={(v) => setFields((prev) => ({ ...prev, developer: v }))}
                         />
                         <FieldRow
                           field={FIELDS[6]}
                           value={fields.developmentTime}
-                          isEditing={true}
                           onChange={(v) => setFields((prev) => ({ ...prev, developmentTime: v }))}
                         />
                         <FieldRow
                           field={FIELDS[7]}
                           value={fields.temperature}
-                          isEditing={true}
                           onChange={(v) => setFields((prev) => ({ ...prev, temperature: v }))}
                         />
                         <FieldRow
                           field={FIELDS[8]}
                           value={fields.dilution}
-                          isEditing={true}
                           onChange={(v) => setFields((prev) => ({ ...prev, dilution: v }))}
                         />
                         <FieldRow
                           field={FIELDS[10]}
                           value={fields.testStrip}
-                          isEditing={true}
                           onChange={(v) => setFields((prev) => ({ ...prev, testStrip: v }))}
                           multiline
                         />
                         <FieldRow
                           field={FIELDS[11]}
                           value={fields.notes}
-                          isEditing={true}
                           onChange={(v) => setFields((prev) => ({ ...prev, notes: v }))}
                           multiline
                         />
@@ -465,13 +459,11 @@ function DetailRow({
 function FieldRow({
   field,
   value,
-  isEditing,
   onChange,
   multiline = false,
 }: {
   field: (typeof FIELDS)[0];
   value: string;
-  isEditing: boolean;
   onChange: (v: string) => void;
   multiline?: boolean;
 }) {
