@@ -35,6 +35,8 @@ jobs:
       - name: Build web
         run: npm run build
         working-directory: web
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       - name: SPA fallback
         run: cp web/dist/index.html web/dist/404.html

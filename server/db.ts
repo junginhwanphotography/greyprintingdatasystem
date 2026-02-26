@@ -1,24 +1,24 @@
-import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { eq, like, asc, desc } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { ENV } from "./_core/env";
+import * as memoryStore from "./_core/memoryStore";
+import {
+  users, cameraTypes, lensGroups, formats, filmTypes,
+  paperBrands, paperTypes, paperSizes, printData,
+  type InsertUser, type InsertCameraType, type InsertLensGroup, type InsertFormat,
+  type InsertFilmType, type InsertPaperBrand, type InsertPaperType,
+  type InsertPaperSize, type InsertPrintData,
+} from "../drizzle/schema";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+type DrizzleDb = ReturnType<typeof drizzle>;
+let _db: DrizzleDb | null = null;
 
-/** MySQL2/drizzle insert result can be array [ResultSetHeader] or object { insertId } depending on driver version */
-function getInsertId(result: unknown): number {
-  if (Array.isArray(result) && result[0] != null && typeof (result[0] as { insertId?: number }).insertId === "number")
-    return (result[0] as { insertId: number }).insertId;
-  if (result != null && typeof (result as { insertId?: number }).insertId === "number")
-    return (result as { insertId: number }).insertId;
-  throw new Error("Insert did not return insertId");
-}
-
-// Lazily create the drizzle instance so local tooling can run without a DB.
-export async function getDb() {
+export async function getDb(): Promise<DrizzleDb | null> {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const client = postgres(process.env.DATABASE_URL, { max: 5 });
+      _db = drizzle(client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -27,10 +27,10 @@ export async function getDb() {
   return _db;
 }
 
+// ─── Users ────────────────────────────────────────────────────────────────────
+
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
+  if (!user.openId) throw new Error("User openId is required for upsert");
 
   const db = await getDb();
   if (!db) {
@@ -38,79 +38,48 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     return;
   }
 
-  try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
+  const values: InsertUser = { openId: user.openId };
+  const updateSet: Record<string, unknown> = {};
 
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
+  const textFields = ["name", "email", "loginMethod"] as const;
+  type TextField = (typeof textFields)[number];
+  const assignNullable = (field: TextField) => {
+    const value = user[field];
+    if (value === undefined) return;
+    const normalized = value ?? null;
+    values[field] = normalized;
+    updateSet[field] = normalized;
+  };
+  textFields.forEach(assignNullable);
 
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = "admin";
-      updateSet.role = "admin";
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
+  if (user.lastSignedIn !== undefined) {
+    values.lastSignedIn = user.lastSignedIn;
+    updateSet.lastSignedIn = user.lastSignedIn;
   }
+  if (user.role !== undefined) {
+    values.role = user.role;
+    updateSet.role = user.role;
+  } else if (user.openId === ENV.ownerOpenId) {
+    values.role = "admin";
+    updateSet.role = "admin";
+  }
+  if (!values.lastSignedIn) values.lastSignedIn = new Date();
+  if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
+
+  await db.insert(users).values(values).onConflictDoUpdate({
+    target: users.openId,
+    set: updateSet,
+  });
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
+  if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  return result[0] ?? undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
-
 // ─── Grey Print Data System Queries ──────────────────────────────────────────
-
-import * as memoryStore from "./_core/memoryStore";
-import { like, asc, desc } from "drizzle-orm";
-import {
-  cameraTypes, lensGroups, formats, filmTypes,
-  paperBrands, paperTypes, paperSizes, printData,
-  type InsertCameraType, type InsertLensGroup, type InsertFormat,
-  type InsertFilmType, type InsertPaperBrand, type InsertPaperType,
-  type InsertPaperSize, type InsertPrintData,
-} from "../drizzle/schema";
 
 // Camera Types
 export async function getCameraTypes() {
@@ -121,13 +90,13 @@ export async function getCameraTypes() {
 export async function createCameraType(data: InsertCameraType) {
   const db = await getDb();
   if (!db) return memoryStore.createCameraType(data);
-  const result = await db.insert(cameraTypes).values(data);
-  return result[0].insertId;
+  const rows = await db.insert(cameraTypes).values(data).returning({ id: cameraTypes.id });
+  return rows[0].id;
 }
 export async function updateCameraType(id: number, data: Partial<InsertCameraType>) {
   const db = await getDb();
   if (!db) return memoryStore.updateCameraType(id, data);
-  await db.update(cameraTypes).set(data).where(eq(cameraTypes.id, id));
+  await db.update(cameraTypes).set({ ...data, updatedAt: new Date() }).where(eq(cameraTypes.id, id));
 }
 export async function deleteCameraType(id: number) {
   const db = await getDb();
@@ -144,13 +113,13 @@ export async function getLensGroups(cameraTypeId: number) {
 export async function createLensGroup(data: InsertLensGroup) {
   const db = await getDb();
   if (!db) return memoryStore.createLensGroup(data);
-  const result = await db.insert(lensGroups).values(data);
-  return result[0].insertId;
+  const rows = await db.insert(lensGroups).values(data).returning({ id: lensGroups.id });
+  return rows[0].id;
 }
 export async function updateLensGroup(id: number, data: Partial<InsertLensGroup>) {
   const db = await getDb();
   if (!db) return memoryStore.updateLensGroup(id, data);
-  await db.update(lensGroups).set(data).where(eq(lensGroups.id, id));
+  await db.update(lensGroups).set({ ...data, updatedAt: new Date() }).where(eq(lensGroups.id, id));
 }
 export async function deleteLensGroup(id: number) {
   const db = await getDb();
@@ -167,13 +136,13 @@ export async function getFormats(lensGroupId: number) {
 export async function createFormat(data: InsertFormat) {
   const db = await getDb();
   if (!db) return memoryStore.createFormat(data);
-  const result = await db.insert(formats).values(data);
-  return result[0].insertId;
+  const rows = await db.insert(formats).values(data).returning({ id: formats.id });
+  return rows[0].id;
 }
 export async function updateFormat(id: number, data: Partial<InsertFormat>) {
   const db = await getDb();
   if (!db) return memoryStore.updateFormat(id, data);
-  await db.update(formats).set(data).where(eq(formats.id, id));
+  await db.update(formats).set({ ...data, updatedAt: new Date() }).where(eq(formats.id, id));
 }
 export async function deleteFormat(id: number) {
   const db = await getDb();
@@ -190,13 +159,13 @@ export async function getFilmTypes(formatId: number) {
 export async function createFilmType(data: InsertFilmType) {
   const db = await getDb();
   if (!db) return memoryStore.createFilmType(data);
-  const result = await db.insert(filmTypes).values(data);
-  return result[0].insertId;
+  const rows = await db.insert(filmTypes).values(data).returning({ id: filmTypes.id });
+  return rows[0].id;
 }
 export async function updateFilmType(id: number, data: Partial<InsertFilmType>) {
   const db = await getDb();
   if (!db) return memoryStore.updateFilmType(id, data);
-  await db.update(filmTypes).set(data).where(eq(filmTypes.id, id));
+  await db.update(filmTypes).set({ ...data, updatedAt: new Date() }).where(eq(filmTypes.id, id));
 }
 export async function deleteFilmType(id: number) {
   const db = await getDb();
@@ -213,13 +182,13 @@ export async function getPaperBrands(filmTypeId: number) {
 export async function createPaperBrand(data: InsertPaperBrand) {
   const db = await getDb();
   if (!db) return memoryStore.createPaperBrand(data);
-  const result = await db.insert(paperBrands).values(data);
-  return result[0].insertId;
+  const rows = await db.insert(paperBrands).values(data).returning({ id: paperBrands.id });
+  return rows[0].id;
 }
 export async function updatePaperBrand(id: number, data: Partial<InsertPaperBrand>) {
   const db = await getDb();
   if (!db) return memoryStore.updatePaperBrand(id, data);
-  await db.update(paperBrands).set(data).where(eq(paperBrands.id, id));
+  await db.update(paperBrands).set({ ...data, updatedAt: new Date() }).where(eq(paperBrands.id, id));
 }
 export async function deletePaperBrand(id: number) {
   const db = await getDb();
@@ -236,13 +205,13 @@ export async function getPaperTypes(paperBrandId: number) {
 export async function createPaperType(data: InsertPaperType) {
   const db = await getDb();
   if (!db) return memoryStore.createPaperType(data);
-  const result = await db.insert(paperTypes).values(data);
-  return result[0].insertId;
+  const rows = await db.insert(paperTypes).values(data).returning({ id: paperTypes.id });
+  return rows[0].id;
 }
 export async function updatePaperType(id: number, data: Partial<InsertPaperType>) {
   const db = await getDb();
   if (!db) return memoryStore.updatePaperType(id, data);
-  await db.update(paperTypes).set(data).where(eq(paperTypes.id, id));
+  await db.update(paperTypes).set({ ...data, updatedAt: new Date() }).where(eq(paperTypes.id, id));
 }
 export async function deletePaperType(id: number) {
   const db = await getDb();
@@ -259,13 +228,13 @@ export async function getPaperSizes(paperTypeId: number) {
 export async function createPaperSize(data: InsertPaperSize) {
   const db = await getDb();
   if (!db) return memoryStore.createPaperSize(data);
-  const result = await db.insert(paperSizes).values(data);
-  return result[0].insertId;
+  const rows = await db.insert(paperSizes).values(data).returning({ id: paperSizes.id });
+  return rows[0].id;
 }
 export async function updatePaperSize(id: number, data: Partial<InsertPaperSize>) {
   const db = await getDb();
   if (!db) return memoryStore.updatePaperSize(id, data);
-  await db.update(paperSizes).set(data).where(eq(paperSizes.id, id));
+  await db.update(paperSizes).set({ ...data, updatedAt: new Date() }).where(eq(paperSizes.id, id));
 }
 export async function deletePaperSize(id: number) {
   const db = await getDb();
@@ -273,7 +242,7 @@ export async function deletePaperSize(id: number) {
   await db.delete(paperSizes).where(eq(paperSizes.id, id));
 }
 
-// Print Data (extraData: API sends array, DB stores JSON string)
+// Print Data
 type PrintDataUpsert = Omit<InsertPrintData, "extraData"> & {
   id?: number;
   extraData?: InsertPrintData["extraData"] | { key: string; value: string }[];
@@ -380,13 +349,8 @@ export async function listAllPaperSizesWithPath(): Promise<{ id: number; name: s
 export async function createPrintData(paperSizeId: number) {
   const db = await getDb();
   if (!db) return memoryStore.createPrintData(paperSizeId);
-  try {
-    const result = await db.insert(printData).values({ paperSizeId } as InsertPrintData);
-    return getInsertId(result);
-  } catch (err) {
-    console.error("[Database] createPrintData failed:", err);
-    throw err;
-  }
+  const rows = await db.insert(printData).values({ paperSizeId } as InsertPrintData).returning({ id: printData.id });
+  return rows[0].id;
 }
 
 export async function deletePrintData(id: number) {
@@ -400,6 +364,7 @@ export async function upsertPrintData(data: PrintDataUpsert) {
   const payload = {
     ...data,
     id: undefined,
+    updatedAt: new Date(),
     extraData:
       data.extraData === undefined
         ? undefined
@@ -415,8 +380,8 @@ export async function upsertPrintData(data: PrintDataUpsert) {
       return data.id;
     }
   }
-  const result = await db.insert(printData).values(payload as InsertPrintData);
-  return getInsertId(result);
+  const rows = await db.insert(printData).values(payload as InsertPrintData).returning({ id: printData.id });
+  return rows[0].id;
 }
 
 // Search
