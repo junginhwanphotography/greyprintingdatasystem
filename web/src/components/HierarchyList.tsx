@@ -75,6 +75,7 @@ export default function HierarchyList({
   const [searchQuery, setSearchQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState<number | null>(null);
   const [clipboard, setClipboard] = useState<ClipboardState | null>(() => readClipboard());
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<HierarchyItem | null>(null);
 
   const canPaste = !!clipboard && clipboard.entityType === entityType && !!onPasteItem;
 
@@ -103,7 +104,13 @@ export default function HierarchyList({
 
   const handleDelete = (item: HierarchyItem) => {
     setMenuOpen(null);
-    if (!confirm(`"${item.name}"을(를) 삭제하시겠습니까? 하위 데이터도 모두 삭제됩니다.`)) return;
+    setDeleteConfirmItem(item);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteConfirmItem) return;
+    const item = deleteConfirmItem;
+    setDeleteConfirmItem(null);
     onDeleteItem(item).catch(() => alert("삭제에 실패했습니다."));
   };
 
@@ -412,6 +419,35 @@ export default function HierarchyList({
                 className="flex-1 rounded-lg bg-primary py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
               >
                 변경
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {deleteConfirmItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20" onClick={() => setDeleteConfirmItem(null)}>
+          <div className="w-full max-w-sm rounded-2xl bg-surface p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-foreground mb-2">삭제 확인</h3>
+            <p className="text-sm text-muted mb-1">
+              <span className="font-medium text-foreground">"{deleteConfirmItem.name}"</span>을(를) 삭제하시겠습니까?
+            </p>
+            <p className="text-sm text-red-500 mb-6">하위 항목과 인화 데이터가 모두 삭제되며 복구할 수 없습니다.</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmItem(null)}
+                className="flex-1 rounded-lg border border-border py-2.5 text-sm font-medium text-foreground hover:bg-zinc-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="flex-1 rounded-lg bg-red-500 py-2.5 text-sm font-medium text-white hover:bg-red-600 transition-colors"
+              >
+                삭제
               </button>
             </div>
           </div>

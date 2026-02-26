@@ -51,6 +51,7 @@ export default function PrintData() {
 
   const [isEditing, setIsEditing] = useState(isDraft);
   const [showDetail, setShowDetail] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [title, setTitle] = useState("");
   const [fields, setFields] = useState<FieldsState>(emptyFields);
   const [extraData, setExtraData] = useState<{ key: string; value: string }[]>([]);
@@ -102,6 +103,12 @@ export default function PrintData() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleDelete = async () => {
+    hasSavedRef.current = true;
+    await deleteMutation.mutateAsync({ id });
+    navigate(-1);
   };
 
   const handleCancel = () => {
@@ -188,14 +195,28 @@ export default function PrintData() {
               </h1>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
-            disabled={isSaving}
-            className="rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
-            {isSaving ? "..." : isEditing ? "저장" : "편집"}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {!isDraft && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="rounded-lg border border-border p-2 text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 transition-colors"
+                title="삭제"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
+              disabled={isSaving}
+              className="rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {isSaving ? "..." : isEditing ? "저장" : "편집"}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -417,6 +438,37 @@ export default function PrintData() {
               취소
             </button>
           )}
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="w-full max-w-sm rounded-2xl bg-surface p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-foreground mb-2">데이터 삭제</h3>
+            <p className="text-sm text-muted mb-1">
+              {title.trim()
+                ? <><span className="font-medium text-foreground">"{title.trim()}"</span>을(를) 삭제하시겠습니까?</>
+                : "이 인화 데이터를 삭제하시겠습니까?"}
+            </p>
+            <p className="text-sm text-red-500 mb-6">삭제된 데이터는 복구할 수 없습니다.</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 rounded-lg border border-border py-2.5 text-sm font-medium text-foreground hover:bg-zinc-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="flex-1 rounded-lg bg-red-500 py-2.5 text-sm font-medium text-white hover:bg-red-600 transition-colors"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
