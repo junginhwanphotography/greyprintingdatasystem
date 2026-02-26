@@ -9,6 +9,7 @@ export default function Cameras() {
   const createMutation = trpc.cameras.create.useMutation({ onSuccess: () => utils.cameras.list.invalidate() });
   const deleteMutation = trpc.cameras.delete.useMutation({ onSuccess: () => utils.cameras.list.invalidate() });
   const updateMutation = trpc.cameras.update.useMutation({ onSuccess: () => utils.cameras.list.invalidate() });
+  const copyMutation = trpc.cameras.copy.useMutation({ onSuccess: () => utils.cameras.list.invalidate() });
 
   return (
     <HierarchyList
@@ -16,6 +17,7 @@ export default function Cameras() {
       breadcrumb={[]}
       items={cameras}
       isLoading={isLoading}
+      entityType="camera"
       onItemPress={(item) =>
         navigate(`/browse/lens-groups/${item.id}`, { state: { cameraName: item.name } })
       }
@@ -25,6 +27,9 @@ export default function Cameras() {
       onDeleteItem={(item) => deleteMutation.mutateAsync({ id: item.id }).then(() => {})}
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
+      }
+      onPasteItem={(clipboardId) =>
+        copyMutation.mutateAsync({ id: clipboardId }).then(() => {})
       }
       emptyMessage="카메라 종류가 없습니다"
     />

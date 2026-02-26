@@ -384,6 +384,108 @@ export async function upsertPrintData(data: PrintDataUpsert) {
   return rows[0].id;
 }
 
+// ─── Recursive Copy Functions ────────────────────────────────────────────────
+
+export async function copyPaperSize(id: number, targetPaperTypeId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return memoryStore.copyPaperSize(id, targetPaperTypeId);
+  const [src] = await db.select().from(paperSizes).where(eq(paperSizes.id, id));
+  if (!src) throw new Error("Paper size not found");
+  const [newRow] = await db.insert(paperSizes).values({
+    name: src.name, description: src.description, paperTypeId: targetPaperTypeId, sortOrder: src.sortOrder,
+  }).returning({ id: paperSizes.id });
+  const pdList = await db.select().from(printData).where(eq(printData.paperSizeId, id));
+  for (const pd of pdList) {
+    await db.insert(printData).values({
+      paperSizeId: newRow.id,
+      title: pd.title, exposureTime: pd.exposureTime, aperture: pd.aperture,
+      filterYellow: pd.filterYellow, filterMagenta: pd.filterMagenta, filterCyan: pd.filterCyan,
+      developer: pd.developer, developmentTime: pd.developmentTime, temperature: pd.temperature,
+      dilution: pd.dilution, enlargerHeight: pd.enlargerHeight, testStrip: pd.testStrip,
+      notes: pd.notes, extraData: pd.extraData,
+    });
+  }
+  return newRow.id;
+}
+
+export async function copyPaperType(id: number, targetPaperBrandId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return memoryStore.copyPaperType(id, targetPaperBrandId);
+  const [src] = await db.select().from(paperTypes).where(eq(paperTypes.id, id));
+  if (!src) throw new Error("Paper type not found");
+  const [newRow] = await db.insert(paperTypes).values({
+    name: src.name, description: src.description, paperBrandId: targetPaperBrandId, sortOrder: src.sortOrder,
+  }).returning({ id: paperTypes.id });
+  const children = await db.select().from(paperSizes).where(eq(paperSizes.paperTypeId, id));
+  for (const child of children) await copyPaperSize(child.id, newRow.id);
+  return newRow.id;
+}
+
+export async function copyPaperBrand(id: number, targetFilmTypeId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return memoryStore.copyPaperBrand(id, targetFilmTypeId);
+  const [src] = await db.select().from(paperBrands).where(eq(paperBrands.id, id));
+  if (!src) throw new Error("Paper brand not found");
+  const [newRow] = await db.insert(paperBrands).values({
+    name: src.name, description: src.description, filmTypeId: targetFilmTypeId, sortOrder: src.sortOrder,
+  }).returning({ id: paperBrands.id });
+  const children = await db.select().from(paperTypes).where(eq(paperTypes.paperBrandId, id));
+  for (const child of children) await copyPaperType(child.id, newRow.id);
+  return newRow.id;
+}
+
+export async function copyFilmType(id: number, targetFormatId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return memoryStore.copyFilmType(id, targetFormatId);
+  const [src] = await db.select().from(filmTypes).where(eq(filmTypes.id, id));
+  if (!src) throw new Error("Film type not found");
+  const [newRow] = await db.insert(filmTypes).values({
+    name: src.name, description: src.description, formatId: targetFormatId, sortOrder: src.sortOrder, iso: src.iso,
+  }).returning({ id: filmTypes.id });
+  const children = await db.select().from(paperBrands).where(eq(paperBrands.filmTypeId, id));
+  for (const child of children) await copyPaperBrand(child.id, newRow.id);
+  return newRow.id;
+}
+
+export async function copyFormat(id: number, targetLensGroupId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return memoryStore.copyFormat(id, targetLensGroupId);
+  const [src] = await db.select().from(formats).where(eq(formats.id, id));
+  if (!src) throw new Error("Format not found");
+  const [newRow] = await db.insert(formats).values({
+    name: src.name, description: src.description, lensGroupId: targetLensGroupId, sortOrder: src.sortOrder,
+  }).returning({ id: formats.id });
+  const children = await db.select().from(filmTypes).where(eq(filmTypes.formatId, id));
+  for (const child of children) await copyFilmType(child.id, newRow.id);
+  return newRow.id;
+}
+
+export async function copyLensGroup(id: number, targetCameraTypeId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return memoryStore.copyLensGroup(id, targetCameraTypeId);
+  const [src] = await db.select().from(lensGroups).where(eq(lensGroups.id, id));
+  if (!src) throw new Error("Lens group not found");
+  const [newRow] = await db.insert(lensGroups).values({
+    name: src.name, description: src.description, cameraTypeId: targetCameraTypeId, sortOrder: src.sortOrder,
+  }).returning({ id: lensGroups.id });
+  const children = await db.select().from(formats).where(eq(formats.lensGroupId, id));
+  for (const child of children) await copyFormat(child.id, newRow.id);
+  return newRow.id;
+}
+
+export async function copyCameraType(id: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return memoryStore.copyCameraType(id);
+  const [src] = await db.select().from(cameraTypes).where(eq(cameraTypes.id, id));
+  if (!src) throw new Error("Camera type not found");
+  const [newRow] = await db.insert(cameraTypes).values({
+    name: `${src.name} (복사본)`, description: src.description, sortOrder: src.sortOrder,
+  }).returning({ id: cameraTypes.id });
+  const children = await db.select().from(lensGroups).where(eq(lensGroups.cameraTypeId, id));
+  for (const child of children) await copyLensGroup(child.id, newRow.id);
+  return newRow.id;
+}
+
 // Search
 export async function searchAll(query: string) {
   const db = await getDb();

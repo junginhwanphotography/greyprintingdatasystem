@@ -30,6 +30,9 @@ export const appRouter = router({
     delete: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteCameraType(input.id)),
+    copy: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(({ input }) => db.copyCameraType(input.id)),
   }),
 
   // ─── Lens Groups ───────────────────────────────────────────────────────────
@@ -46,6 +49,9 @@ export const appRouter = router({
     delete: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteLensGroup(input.id)),
+    copy: publicProcedure
+      .input(z.object({ id: z.number(), cameraTypeId: z.number() }))
+      .mutation(({ input }) => db.copyLensGroup(input.id, input.cameraTypeId)),
   }),
 
   // ─── Formats ───────────────────────────────────────────────────────────────
@@ -62,6 +68,9 @@ export const appRouter = router({
     delete: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteFormat(input.id)),
+    copy: publicProcedure
+      .input(z.object({ id: z.number(), lensGroupId: z.number() }))
+      .mutation(({ input }) => db.copyFormat(input.id, input.lensGroupId)),
   }),
 
   // ─── Film Types ────────────────────────────────────────────────────────────
@@ -78,6 +87,9 @@ export const appRouter = router({
     delete: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteFilmType(input.id)),
+    copy: publicProcedure
+      .input(z.object({ id: z.number(), formatId: z.number() }))
+      .mutation(({ input }) => db.copyFilmType(input.id, input.formatId)),
   }),
 
   // ─── Paper Brands ──────────────────────────────────────────────────────────
@@ -94,6 +106,9 @@ export const appRouter = router({
     delete: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deletePaperBrand(input.id)),
+    copy: publicProcedure
+      .input(z.object({ id: z.number(), filmTypeId: z.number() }))
+      .mutation(({ input }) => db.copyPaperBrand(input.id, input.filmTypeId)),
   }),
 
   // ─── Paper Types ───────────────────────────────────────────────────────────
@@ -110,6 +125,9 @@ export const appRouter = router({
     delete: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deletePaperType(input.id)),
+    copy: publicProcedure
+      .input(z.object({ id: z.number(), paperBrandId: z.number() }))
+      .mutation(({ input }) => db.copyPaperType(input.id, input.paperBrandId)),
   }),
 
   // ─── Paper Sizes ───────────────────────────────────────────────────────────
@@ -128,6 +146,9 @@ export const appRouter = router({
       .mutation(({ input }) => db.deletePaperSize(input.id)),
     listAllWithPath: publicProcedure
       .query(() => db.listAllPaperSizesWithPath()),
+    copy: publicProcedure
+      .input(z.object({ id: z.number(), paperTypeId: z.number() }))
+      .mutation(({ input }) => db.copyPaperSize(input.id, input.paperTypeId)),
   }),
 
   // ─── Print Data ────────────────────────────────────────────────────────────

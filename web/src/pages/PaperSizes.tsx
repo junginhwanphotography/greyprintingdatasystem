@@ -27,6 +27,7 @@ export default function PaperSizes() {
   const createMutation = trpc.paperSizes.create.useMutation({ onSuccess: () => utils.paperSizes.list.invalidate() });
   const deleteMutation = trpc.paperSizes.delete.useMutation({ onSuccess: () => utils.paperSizes.list.invalidate() });
   const updateMutation = trpc.paperSizes.update.useMutation({ onSuccess: () => utils.paperSizes.list.invalidate() });
+  const copyMutation = trpc.paperSizes.copy.useMutation({ onSuccess: () => utils.paperSizes.list.invalidate() });
 
   return (
     <HierarchyList
@@ -34,6 +35,7 @@ export default function PaperSizes() {
       breadcrumb={[cameraName, lensName, formatName, filmName, brandName, typeName]}
       items={sizes}
       isLoading={isLoading}
+      entityType="size"
       onItemPress={(item) =>
         navigate(`/browse/print-data-list/${item.id}`, {
           state: {
@@ -53,6 +55,9 @@ export default function PaperSizes() {
       onDeleteItem={(item) => deleteMutation.mutateAsync({ id: item.id }).then(() => {})}
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
+      }
+      onPasteItem={(clipboardId) =>
+        copyMutation.mutateAsync({ id: clipboardId, paperTypeId: id }).then(() => {})
       }
       emptyMessage="인화지 사이즈가 없습니다"
     />

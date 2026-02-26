@@ -13,6 +13,7 @@ export default function Formats() {
   const createMutation = trpc.formats.create.useMutation({ onSuccess: () => utils.formats.list.invalidate() });
   const deleteMutation = trpc.formats.delete.useMutation({ onSuccess: () => utils.formats.list.invalidate() });
   const updateMutation = trpc.formats.update.useMutation({ onSuccess: () => utils.formats.list.invalidate() });
+  const copyMutation = trpc.formats.copy.useMutation({ onSuccess: () => utils.formats.list.invalidate() });
 
   return (
     <HierarchyList
@@ -20,6 +21,7 @@ export default function Formats() {
       breadcrumb={[cameraName, lensName]}
       items={fmts}
       isLoading={isLoading}
+      entityType="format"
       onItemPress={(item) =>
         navigate(`/browse/film-types/${item.id}`, {
           state: { cameraName, lensName, formatName: item.name },
@@ -31,6 +33,9 @@ export default function Formats() {
       onDeleteItem={(item) => deleteMutation.mutateAsync({ id: item.id }).then(() => {})}
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
+      }
+      onPasteItem={(clipboardId) =>
+        copyMutation.mutateAsync({ id: clipboardId, lensGroupId: id }).then(() => {})
       }
       emptyMessage="판형이 없습니다"
     />

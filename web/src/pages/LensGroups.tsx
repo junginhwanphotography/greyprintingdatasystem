@@ -13,6 +13,7 @@ export default function LensGroups() {
   const createMutation = trpc.lenses.create.useMutation({ onSuccess: () => utils.lenses.list.invalidate() });
   const deleteMutation = trpc.lenses.delete.useMutation({ onSuccess: () => utils.lenses.list.invalidate() });
   const updateMutation = trpc.lenses.update.useMutation({ onSuccess: () => utils.lenses.list.invalidate() });
+  const copyMutation = trpc.lenses.copy.useMutation({ onSuccess: () => utils.lenses.list.invalidate() });
 
   return (
     <HierarchyList
@@ -20,6 +21,7 @@ export default function LensGroups() {
       breadcrumb={[cameraName]}
       items={lenses}
       isLoading={isLoading}
+      entityType="lens"
       onItemPress={(item) =>
         navigate(`/browse/formats/${item.id}`, {
           state: { cameraName, lensName: item.name },
@@ -31,6 +33,9 @@ export default function LensGroups() {
       onDeleteItem={(item) => deleteMutation.mutateAsync({ id: item.id }).then(() => {})}
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
+      }
+      onPasteItem={(clipboardId) =>
+        copyMutation.mutateAsync({ id: clipboardId, cameraTypeId: id }).then(() => {})
       }
       emptyMessage="렌즈군이 없습니다"
     />

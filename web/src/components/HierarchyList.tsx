@@ -1,6 +1,33 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+export type ClipboardEntityType = "camera" | "lens" | "format" | "film" | "brand" | "type" | "size";
+
+interface ClipboardState {
+  entityType: ClipboardEntityType;
+  id: number;
+  name: string;
+}
+
+const CLIPBOARD_KEY = "hierarchy-clipboard";
+
+function readClipboard(): ClipboardState | null {
+  try {
+    const raw = localStorage.getItem(CLIPBOARD_KEY);
+    return raw ? (JSON.parse(raw) as ClipboardState) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeClipboard(state: ClipboardState) {
+  localStorage.setItem(CLIPBOARD_KEY, JSON.stringify(state));
+}
+
+function clearClipboard() {
+  localStorage.removeItem(CLIPBOARD_KEY);
+}
+
 export interface HierarchyItem {
   id: number;
   name: string;
@@ -17,6 +44,8 @@ interface HierarchyListProps {
   onAddItem: (name: string, description?: string) => Promise<void>;
   onDeleteItem: (item: HierarchyItem) => Promise<void>;
   onRenameItem?: (item: HierarchyItem, newName: string) => Promise<void>;
+  onPasteItem?: (clipboardId: number) => Promise<void>;
+  entityType?: ClipboardEntityType;
   emptyMessage?: string;
 }
 
@@ -29,6 +58,8 @@ export default function HierarchyList({
   onAddItem,
   onDeleteItem,
   onRenameItem,
+  onPasteItem,
+  entityType,
   emptyMessage = "항목이 없습니다",
 }: HierarchyListProps) {
   const navigate = useNavigate();
@@ -40,8 +71,12 @@ export default function HierarchyList({
   const [newDescription, setNewDescription] = useState("");
   const [selectedItem, setSelectedItem] = useState<HierarchyItem | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [isPasting, setIsPasting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState<number | null>(null);
+  const [clipboard, setClipboard] = useState<ClipboardState | null>(() => readClipboard());
+
+  const canPaste = !!clipboard && clipboard.entityType === entityType && !!onPasteItem;
 
   const filteredItems = searchQuery.trim()
     ? items.filter((item) => {
@@ -77,6 +112,33 @@ export default function HierarchyList({
     setSelectedItem(item);
     setNewName(item.name);
     setShowRenameModal(true);
+  };
+
+  const handleCopy = (item: HierarchyItem) => {
+    if (!entityType) return;
+    const state: ClipboardState = { entityType, id: item.id, name: item.name };
+    writeClipboard(state);
+    setClipboard(state);
+    setMenuOpen(null);
+  };
+
+  const handlePaste = async () => {
+    if (!clipboard || !onPasteItem) return;
+    setIsPasting(true);
+    try {
+      await onPasteItem(clipboard.id);
+      clearClipboard();
+      setClipboard(null);
+    } catch {
+      alert("붙여넣기에 실패했습니다.");
+    } finally {
+      setIsPasting(false);
+    }
+  };
+
+  const handleClearClipboard = () => {
+    clearClipboard();
+    setClipboard(null);
   };
 
   const handleConfirmRename = async () => {
@@ -141,6 +203,34 @@ export default function HierarchyList({
             </svg>
           </button>
         </div>
+        {canPaste && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+            <svg className="h-4 w-4 shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <p className="min-w-0 flex-1 truncate text-sm text-foreground">
+              <span className="font-medium text-primary">복사됨:</span> {clipboard!.name}
+            </p>
+            <button
+              type="button"
+              onClick={handlePaste}
+              disabled={isPasting}
+              className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {isPasting ? "..." : "붙여넣기"}
+            </button>
+            <button
+              type="button"
+              onClick={handleClearClipboard}
+              className="shrink-0 rounded-md p-1 text-muted hover:text-foreground transition-colors"
+              title="클립보드 지우기"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
       </header>
 
       {isLoading ? (
@@ -211,6 +301,15 @@ export default function HierarchyList({
                             className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-50"
                           >
                             이름 변경
+                          </button>
+                        )}
+                        {entityType && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(item)}
+                            className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-50"
+                          >
+                            복사
                           </button>
                         )}
                         <button

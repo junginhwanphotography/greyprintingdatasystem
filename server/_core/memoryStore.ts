@@ -427,6 +427,81 @@ export function upsertPrintData(data: Partial<PrintDataRow> & { paperSizeId: num
   return id;
 }
 
+// ─── Recursive Copy Functions ────────────────────────────────────────────────
+
+export function copyPaperSize(id: number, targetPaperTypeId: number): number {
+  const src = _paperSizes.find((s) => s.id === id);
+  if (!src) throw new Error("Paper size not found");
+  const newId = nextId();
+  const now = new Date();
+  _paperSizes.push({ ...src, id: newId, paperTypeId: targetPaperTypeId, createdAt: now, updatedAt: now });
+  const pdList = _printData.filter((p) => p.paperSizeId === id);
+  for (const pd of pdList) {
+    _printData.push({ ...pd, id: nextId(), paperSizeId: newId, createdAt: now, updatedAt: now });
+  }
+  return newId;
+}
+
+export function copyPaperType(id: number, targetPaperBrandId: number): number {
+  const src = _paperTypes.find((t) => t.id === id);
+  if (!src) throw new Error("Paper type not found");
+  const newId = nextId();
+  const now = new Date();
+  _paperTypes.push({ ...src, id: newId, paperBrandId: targetPaperBrandId, createdAt: now, updatedAt: now });
+  _paperSizes.filter((s) => s.paperTypeId === id).forEach((child) => copyPaperSize(child.id, newId));
+  return newId;
+}
+
+export function copyPaperBrand(id: number, targetFilmTypeId: number): number {
+  const src = _paperBrands.find((b) => b.id === id);
+  if (!src) throw new Error("Paper brand not found");
+  const newId = nextId();
+  const now = new Date();
+  _paperBrands.push({ ...src, id: newId, filmTypeId: targetFilmTypeId, createdAt: now, updatedAt: now });
+  _paperTypes.filter((t) => t.paperBrandId === id).forEach((child) => copyPaperType(child.id, newId));
+  return newId;
+}
+
+export function copyFilmType(id: number, targetFormatId: number): number {
+  const src = _films.find((f) => f.id === id);
+  if (!src) throw new Error("Film type not found");
+  const newId = nextId();
+  const now = new Date();
+  _films.push({ ...src, id: newId, formatId: targetFormatId, createdAt: now, updatedAt: now });
+  _paperBrands.filter((b) => b.filmTypeId === id).forEach((child) => copyPaperBrand(child.id, newId));
+  return newId;
+}
+
+export function copyFormat(id: number, targetLensGroupId: number): number {
+  const src = _formats.find((f) => f.id === id);
+  if (!src) throw new Error("Format not found");
+  const newId = nextId();
+  const now = new Date();
+  _formats.push({ ...src, id: newId, lensGroupId: targetLensGroupId, createdAt: now, updatedAt: now });
+  _films.filter((f) => f.formatId === id).forEach((child) => copyFilmType(child.id, newId));
+  return newId;
+}
+
+export function copyLensGroup(id: number, targetCameraTypeId: number): number {
+  const src = _lenses.find((l) => l.id === id);
+  if (!src) throw new Error("Lens group not found");
+  const newId = nextId();
+  const now = new Date();
+  _lenses.push({ ...src, id: newId, cameraTypeId: targetCameraTypeId, createdAt: now, updatedAt: now });
+  _formats.filter((f) => f.lensGroupId === id).forEach((child) => copyFormat(child.id, newId));
+  return newId;
+}
+
+export function copyCameraType(id: number): number {
+  const src = _cameras.find((c) => c.id === id);
+  if (!src) throw new Error("Camera type not found");
+  const newId = nextId();
+  const now = new Date();
+  _cameras.push({ ...src, id: newId, name: `${src.name} (복사본)`, createdAt: now, updatedAt: now });
+  _lenses.filter((l) => l.cameraTypeId === id).forEach((child) => copyLensGroup(child.id, newId));
+  return newId;
+}
+
 // Search
 export function searchAll(query: string) {
   const q = query.toLowerCase().trim();

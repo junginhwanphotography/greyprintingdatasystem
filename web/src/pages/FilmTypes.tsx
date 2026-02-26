@@ -14,6 +14,7 @@ export default function FilmTypes() {
   const createMutation = trpc.films.create.useMutation({ onSuccess: () => utils.films.list.invalidate() });
   const deleteMutation = trpc.films.delete.useMutation({ onSuccess: () => utils.films.list.invalidate() });
   const updateMutation = trpc.films.update.useMutation({ onSuccess: () => utils.films.list.invalidate() });
+  const copyMutation = trpc.films.copy.useMutation({ onSuccess: () => utils.films.list.invalidate() });
 
   return (
     <HierarchyList
@@ -21,6 +22,7 @@ export default function FilmTypes() {
       breadcrumb={[cameraName, lensName, formatName]}
       items={films}
       isLoading={isLoading}
+      entityType="film"
       onItemPress={(item) =>
         navigate(`/browse/paper-brands/${item.id}`, {
           state: { cameraName, lensName, formatName, filmName: item.name },
@@ -32,6 +34,9 @@ export default function FilmTypes() {
       onDeleteItem={(item) => deleteMutation.mutateAsync({ id: item.id }).then(() => {})}
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
+      }
+      onPasteItem={(clipboardId) =>
+        copyMutation.mutateAsync({ id: clipboardId, formatId: id }).then(() => {})
       }
       emptyMessage="필름 종류가 없습니다"
     />

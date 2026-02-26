@@ -14,6 +14,7 @@ export default function PaperBrands() {
   const createMutation = trpc.paperBrands.create.useMutation({ onSuccess: () => utils.paperBrands.list.invalidate() });
   const deleteMutation = trpc.paperBrands.delete.useMutation({ onSuccess: () => utils.paperBrands.list.invalidate() });
   const updateMutation = trpc.paperBrands.update.useMutation({ onSuccess: () => utils.paperBrands.list.invalidate() });
+  const copyMutation = trpc.paperBrands.copy.useMutation({ onSuccess: () => utils.paperBrands.list.invalidate() });
 
   return (
     <HierarchyList
@@ -21,6 +22,7 @@ export default function PaperBrands() {
       breadcrumb={[cameraName, lensName, formatName, filmName]}
       items={brands}
       isLoading={isLoading}
+      entityType="brand"
       onItemPress={(item) =>
         navigate(`/browse/paper-types/${item.id}`, {
           state: { cameraName, lensName, formatName, filmName, brandName: item.name },
@@ -32,6 +34,9 @@ export default function PaperBrands() {
       onDeleteItem={(item) => deleteMutation.mutateAsync({ id: item.id }).then(() => {})}
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
+      }
+      onPasteItem={(clipboardId) =>
+        copyMutation.mutateAsync({ id: clipboardId, filmTypeId: id }).then(() => {})
       }
       emptyMessage="인화지 브랜드가 없습니다"
     />
