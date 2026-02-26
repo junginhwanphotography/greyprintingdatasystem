@@ -16,7 +16,7 @@ export default function Add() {
       utils.printData.list.invalidate({ paperSizeId: vars.paperSizeId });
       const size = paperSizesWithPath.find((s) => s.id === vars.paperSizeId);
       navigate(`/browse/print-data/${newId}`, {
-        state: { paperSizeId: vars.paperSizeId, sizeName: size?.name ?? "" },
+        state: { paperSizeId: vars.paperSizeId, sizeName: size?.name ?? "", isDraft: true },
       });
     },
   });

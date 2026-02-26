@@ -389,6 +389,12 @@ export async function createPrintData(paperSizeId: number) {
   }
 }
 
+export async function deletePrintData(id: number) {
+  const db = await getDb();
+  if (!db) return memoryStore.deletePrintData(id);
+  await db.delete(printData).where(eq(printData.id, id));
+}
+
 export async function upsertPrintData(data: PrintDataUpsert) {
   const db = await getDb();
   const payload = {

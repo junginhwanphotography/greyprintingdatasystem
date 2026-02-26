@@ -143,6 +143,9 @@ export const appRouter = router({
     create: publicProcedure
       .input(z.object({ paperSizeId: z.number() }))
       .mutation(({ input }) => db.createPrintData(input.paperSizeId)),
+    delete: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(({ input }) => db.deletePrintData(input.id)),
     upsert: publicProcedure
       .input(z.object({
         id: z.number().optional(),

@@ -238,6 +238,12 @@ export default function HierarchyList({
               placeholder="이름"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAdd();
+                }
+              }}
               className="mb-3 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary"
               disabled={isAdding}
               autoFocus
@@ -282,6 +288,12 @@ export default function HierarchyList({
               placeholder="새 이름"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleConfirmRename();
+                }
+              }}
               className="mb-5 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
               autoFocus
             />

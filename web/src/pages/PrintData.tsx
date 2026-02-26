@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { trpc } from "../lib/trpc";
 
@@ -36,16 +36,20 @@ export default function PrintData() {
   ].filter(Boolean) as string[];
 
   const id = Number(printDataId);
+  const isDraft = Boolean((location.state as { isDraft?: boolean } | null)?.isDraft);
+  const hasSavedRef = useRef(false);
   const utils = trpc.useUtils();
   const { data: printData, isLoading } = trpc.printData.get.useQuery({ id });
+  const deleteMutation = trpc.printData.delete.useMutation();
   const upsertMutation = trpc.printData.upsert.useMutation({
     onSuccess: () => {
+      hasSavedRef.current = true;
       utils.printData.get.invalidate();
       if (paperSizeId != null) utils.printData.list.invalidate({ paperSizeId });
     },
   });
 
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(isDraft);
   const [showDetail, setShowDetail] = useState(false);
   const [title, setTitle] = useState("");
   const [fields, setFields] = useState<FieldsState>(emptyFields);
@@ -126,6 +130,21 @@ export default function PrintData() {
     setIsEditing(false);
   };
 
+  // If this record was just created as draft and user leaves without saving, remove it.
+  // Use refs so the cleanup only fires once on unmount with the latest values.
+  const deleteOnUnmountRef = useRef<(() => void) | null>(null);
+  deleteOnUnmountRef.current = () => {
+    if (isDraft && !hasSavedRef.current) {
+      deleteMutation.mutate({ id });
+    }
+  };
+  useEffect(() => {
+    return () => {
+      deleteOnUnmountRef.current?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const addExtraRow = () => setExtraData((prev) => [...prev, { key: "", value: "" }]);
   const updateExtraRow = (index: number, field: "key" | "value", value: string) => {
     setExtraData((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
@@ -154,6 +173,12 @@ export default function PrintData() {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSave();
+                  }
+                }}
                 placeholder="제목 (선택)"
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-lg font-semibold text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary"
               />
@@ -193,7 +218,7 @@ export default function PrintData() {
             </div>
           )}
 
-          {hasData && (
+          {(hasData || isEditing) && (
             <>
               {/* 한 눈에 보는 요약: 헤드높이, 조리개, 시간, C/M/Y */}
               <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
@@ -383,7 +408,7 @@ export default function PrintData() {
             </p>
           )}
 
-          {isEditing && hasData && (
+          {isEditing && (
             <button
               type="button"
               onClick={handleCancel}

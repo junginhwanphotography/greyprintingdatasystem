@@ -22,7 +22,7 @@ export default function PrintDataList() {
     onSuccess: (newId) => {
       utils.printData.list.invalidate();
       navigate(`/browse/print-data/${newId}`, {
-        state: { ...(location.state as object), paperSizeId: id },
+        state: { ...(location.state as object), paperSizeId: id, isDraft: true },
       });
     },
   });
@@ -40,6 +40,11 @@ export default function PrintDataList() {
           msg = "API 서버에 연결할 수 없습니다. 서버가 실행 중인지, 주소/포트(예: .env의 VITE_API_URL)를 확인해 주세요.";
         alert(msg);
       });
+  };
+
+  const withUnit = (value?: string | null, prefix = "", suffix = "") => {
+    const v = value?.trim();
+    return v ? `${prefix}${v}${suffix}` : "—";
   };
 
   return (
@@ -74,14 +79,44 @@ export default function PrintDataList() {
                   state: { ...(location.state as object), sizeName, paperSizeId: id },
                 })
               }
-              className="flex w-full items-center justify-between rounded-xl border border-border bg-surface px-4 py-4 text-left hover:border-zinc-200 hover:shadow-sm transition-all"
+              className="w-full rounded-xl border border-border bg-surface px-4 py-4 text-left hover:border-zinc-200 hover:shadow-sm transition-all"
             >
-              <span className="font-medium text-foreground">
-                {item.title?.trim() || `데이터 #${item.id}`}
-              </span>
-              <svg className="h-5 w-5 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  {item.title?.trim() && (
+                    <p className="mb-2 truncate font-medium text-foreground">{item.title.trim()}</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3 md:grid-cols-6">
+                    <div>
+                      <p className="text-xs text-muted">헤드높이</p>
+                      <p className="font-medium text-foreground">{withUnit(item.enlargerHeight, "", " cm")}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">조리개</p>
+                      <p className="font-medium text-foreground">{withUnit(item.aperture, "f/")}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">시간</p>
+                      <p className="font-medium text-foreground">{withUnit(item.exposureTime, "", " 초")}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">C</p>
+                      <p className="font-medium text-foreground">{withUnit(item.filterCyan)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">M</p>
+                      <p className="font-medium text-foreground">{withUnit(item.filterMagenta)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Y</p>
+                      <p className="font-medium text-foreground">{withUnit(item.filterYellow)}</p>
+                    </div>
+                  </div>
+                </div>
+                <svg className="mt-1 h-5 w-5 shrink-0 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
             </button>
           ))}
 

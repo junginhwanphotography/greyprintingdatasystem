@@ -373,6 +373,10 @@ export function createPrintData(paperSizeId: number): number {
   });
   return id;
 }
+export function deletePrintData(id: number) {
+  const idx = _printData.findIndex((p) => p.id === id);
+  if (idx !== -1) _printData.splice(idx, 1);
+}
 export function upsertPrintData(data: Partial<PrintDataRow> & { paperSizeId: number }) {
   const byId = data.id != null ? _printData.find((p) => p.id === data.id) : null;
   const existing = byId ?? (data.id == null ? _printData.find((p) => p.paperSizeId === data.paperSizeId) : null);
