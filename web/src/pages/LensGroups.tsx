@@ -33,8 +33,9 @@ export default function LensGroups() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onDuplicateItem={(item) =>
-        copyMutation.mutateAsync({ id: item.id, cameraTypeId: id }).then(() => {})
+      entityType="lens"
+      onPasteItem={(clipId) =>
+        copyMutation.mutateAsync({ id: clipId, cameraTypeId: id }).then(() => {})
       }
       emptyMessage="렌즈군이 없습니다"
     />

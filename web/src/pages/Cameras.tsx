@@ -27,8 +27,9 @@ export default function Cameras() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onDuplicateItem={(item) =>
-        copyMutation.mutateAsync({ id: item.id }).then(() => {})
+      entityType="camera"
+      onPasteItem={(clipId) =>
+        copyMutation.mutateAsync({ id: clipId }).then(() => {})
       }
       emptyMessage="카메라 종류가 없습니다"
     />

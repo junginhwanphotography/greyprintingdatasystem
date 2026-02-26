@@ -40,8 +40,9 @@ export default function PaperTypes() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onDuplicateItem={(item) =>
-        copyMutation.mutateAsync({ id: item.id, paperBrandId: id }).then(() => {})
+      entityType="type"
+      onPasteItem={(clipId) =>
+        copyMutation.mutateAsync({ id: clipId, paperBrandId: id }).then(() => {})
       }
       emptyMessage="인화지 종류가 없습니다"
     />

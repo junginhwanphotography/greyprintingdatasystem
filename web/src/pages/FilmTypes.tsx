@@ -34,8 +34,9 @@ export default function FilmTypes() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onDuplicateItem={(item) =>
-        copyMutation.mutateAsync({ id: item.id, formatId: id }).then(() => {})
+      entityType="film"
+      onPasteItem={(clipId) =>
+        copyMutation.mutateAsync({ id: clipId, formatId: id }).then(() => {})
       }
       emptyMessage="필름 종류가 없습니다"
     />

@@ -34,8 +34,9 @@ export default function PaperBrands() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onDuplicateItem={(item) =>
-        copyMutation.mutateAsync({ id: item.id, filmTypeId: id }).then(() => {})
+      entityType="brand"
+      onPasteItem={(clipId) =>
+        copyMutation.mutateAsync({ id: clipId, filmTypeId: id }).then(() => {})
       }
       emptyMessage="인화지 브랜드가 없습니다"
     />

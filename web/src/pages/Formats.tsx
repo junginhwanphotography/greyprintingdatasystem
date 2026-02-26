@@ -33,8 +33,9 @@ export default function Formats() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onDuplicateItem={(item) =>
-        copyMutation.mutateAsync({ id: item.id, lensGroupId: id }).then(() => {})
+      entityType="format"
+      onPasteItem={(clipId) =>
+        copyMutation.mutateAsync({ id: clipId, lensGroupId: id }).then(() => {})
       }
       emptyMessage="판형이 없습니다"
     />

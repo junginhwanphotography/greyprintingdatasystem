@@ -55,8 +55,9 @@ export default function PaperSizes() {
       onRenameItem={(item, newName) =>
         updateMutation.mutateAsync({ id: item.id, name: newName }).then(() => {})
       }
-      onDuplicateItem={(item) =>
-        copyMutation.mutateAsync({ id: item.id, paperTypeId: id }).then(() => {})
+      entityType="size"
+      onPasteItem={(clipId) =>
+        copyMutation.mutateAsync({ id: clipId, paperTypeId: id }).then(() => {})
       }
       emptyMessage="인화지 사이즈가 없습니다"
     />
