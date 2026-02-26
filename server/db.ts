@@ -125,6 +125,7 @@ export async function deleteNode(id: number) {
   if (!db) return memoryStore.deleteNode(id);
 
   // Get all descendant IDs using recursive CTE
+  // With postgres.js driver, db.execute() returns the rows array directly (no .rows wrapper)
   const result = await db.execute(sql`
     WITH RECURSIVE descendants AS (
       SELECT id FROM nodes WHERE id = ${id}
@@ -134,12 +135,12 @@ export async function deleteNode(id: number) {
     )
     SELECT id FROM descendants
   `);
-  const allIds = (result.rows as { id: number }[]).map((r) => r.id);
+  const allIds = (result as unknown as { id: number }[]).map((r) => r.id);
   if (allIds.length === 0) return;
 
   // Delete print data for all descendant nodes
   await db.delete(printData).where(inArray(printData.nodeId, allIds));
-  // Delete all nodes (children first, then root — no FK constraints so bulk is fine)
+  // Delete all nodes (bulk delete — no FK constraints)
   await db.delete(nodes).where(inArray(nodes.id, allIds));
 }
 
@@ -147,6 +148,7 @@ export async function getNodePath(id: number): Promise<{ id: number; name: strin
   const db = await getDb();
   if (!db) return memoryStore.getNodePath(id);
 
+  // With postgres.js driver, db.execute() returns the rows array directly (no .rows wrapper)
   const result = await db.execute(sql`
     WITH RECURSIVE path AS (
       SELECT id, name, "parentId", 0 AS depth
@@ -158,7 +160,7 @@ export async function getNodePath(id: number): Promise<{ id: number; name: strin
     )
     SELECT id, name FROM path ORDER BY depth DESC
   `);
-  return result.rows as { id: number; name: string }[];
+  return result as unknown as { id: number; name: string }[];
 }
 
 export async function copyNode(id: number, targetParentId: number | null): Promise<number> {
