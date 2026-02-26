@@ -114,13 +114,15 @@ export default function HierarchyList({
   return (
     <div className="mx-auto max-w-content px-4 py-6 sm:px-6">
       <header className="mb-8">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="mb-4 text-sm text-muted hover:text-foreground transition-colors"
-        >
-          ← Back
-        </button>
+        {breadcrumb.length > 0 && (
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="mb-4 text-sm text-muted hover:text-foreground transition-colors"
+          >
+            ← Back
+          </button>
+        )}
         {breadcrumb.length > 0 && (
           <p className="mb-1 text-xs text-muted truncate">
             {breadcrumb.join(" › ")}
