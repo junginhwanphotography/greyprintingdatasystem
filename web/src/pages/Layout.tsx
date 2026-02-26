@@ -41,7 +41,7 @@ export default function Layout() {
             to="/browse/cameras"
             className="text-sm font-medium text-foreground hover:text-primary transition-colors"
           >
-            Grey Print
+            Grey Printing
           </Link>
           <nav className="flex items-center gap-1">
             <NavLink
