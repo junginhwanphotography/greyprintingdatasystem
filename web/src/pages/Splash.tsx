@@ -25,7 +25,7 @@ export default function Splash() {
         }`}
       >
         <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-          Grey Print
+          Grey Printing
         </h1>
         <div className="mt-1 h-px w-12 bg-primary mx-auto" />
         <p className="mt-2 text-sm text-muted">Data System</p>
