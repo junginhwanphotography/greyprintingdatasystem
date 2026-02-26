@@ -17,20 +17,13 @@ export default function Layout() {
   }, [fabOpen]);
 
   const handleItemAdd = () => {
-    const isHierarchyRoute =
-      location.pathname.startsWith("/browse/cameras") ||
-      location.pathname.startsWith("/browse/lens-groups/") ||
-      location.pathname.startsWith("/browse/formats/") ||
-      location.pathname.startsWith("/browse/film-types/") ||
-      location.pathname.startsWith("/browse/paper-brands/") ||
-      location.pathname.startsWith("/browse/paper-types/") ||
-      location.pathname.startsWith("/browse/paper-sizes/");
     setFabOpen(false);
-    if (isHierarchyRoute) {
+    const isBrowseRoute = location.pathname.startsWith("/browse");
+    if (isBrowseRoute) {
       window.dispatchEvent(new CustomEvent("open-hierarchy-add-modal"));
       return;
     }
-    navigate("/browse/cameras", { state: { openAddModal: true } });
+    navigate("/browse", { state: { openAddModal: true } });
   };
 
   return (
@@ -38,14 +31,14 @@ export default function Layout() {
       <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
         <div className="mx-auto flex h-14 max-w-content items-center justify-between px-4 sm:px-6">
           <Link
-            to="/browse/cameras"
+            to="/browse"
             className="text-sm font-medium text-foreground hover:text-primary transition-colors"
           >
             Grey Printing
           </Link>
           <nav className="flex items-center gap-1">
             <NavLink
-              to="/browse/cameras"
+              to="/browse"
               className={({ isActive }) =>
                 `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                   isActive

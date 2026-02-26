@@ -8,7 +8,7 @@ function Block({
   item: {
     id: number;
     title?: string | null;
-    sizeName: string;
+    nodeName: string;
     enlargerHeight?: string | null;
     aperture?: string | null;
     exposureTime?: string | null;
@@ -18,7 +18,7 @@ function Block({
   };
   onClick: () => void;
 }) {
-  const label = item.title?.trim() || item.sizeName || `#${item.id}`;
+  const label = item.title?.trim() || item.nodeName || `#${item.id}`;
   return (
     <button
       type="button"
@@ -90,7 +90,7 @@ export default function Data() {
               item={item}
               onClick={() =>
                 navigate(`/browse/print-data/${item.id}`, {
-                  state: { sizeName: item.sizeName, paperSizeId: item.paperSizeId },
+                  state: { nodeId: item.nodeId },
                 })
               }
             />

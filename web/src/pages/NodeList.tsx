@@ -1,52 +1,45 @@
 import { useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import HierarchyList from "../components/HierarchyList";
 import { trpc } from "../lib/trpc";
 
-export default function PrintDataList() {
-  const { paperSizeId } = useParams<{ paperSizeId: string }>();
+const withUnit = (value?: string | null, prefix = "", suffix = "") => {
+  const v = value?.trim();
+  return v ? `${prefix}${v}${suffix}` : "—";
+};
+
+// ─── Print Data Section ───────────────────────────────────────────────────────
+
+function PrintDataSection({ nodeId }: { nodeId: number }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const sizeName = (location.state as { sizeName?: string })?.sizeName ?? "";
-  const breadcrumb = [
-    (location.state as { cameraName?: string })?.cameraName,
-    (location.state as { lensName?: string })?.lensName,
-    (location.state as { formatName?: string })?.formatName,
-    (location.state as { filmName?: string })?.filmName,
-    (location.state as { brandName?: string })?.brandName,
-    (location.state as { typeName?: string })?.typeName,
-  ].filter(Boolean) as string[];
-
-  const id = Number(paperSizeId);
   const utils = trpc.useUtils();
-  const { data: list = [], isLoading } = trpc.printData.list.useQuery({ paperSizeId: id });
+
+  const { data: list = [], isLoading } = trpc.printData.list.useQuery({ nodeId });
   const createMutation = trpc.printData.create.useMutation({
     onSuccess: (newId) => {
-      utils.printData.list.invalidate();
+      utils.printData.list.invalidate({ nodeId });
       navigate(`/browse/print-data/${newId}`, {
-        state: { ...(location.state as object), paperSizeId: id, isDraft: true },
+        state: { ...(location.state as object ?? {}), nodeId, isDraft: true },
       });
     },
   });
   const deleteMutation = trpc.printData.delete.useMutation({
-    onSuccess: () => utils.printData.list.invalidate(),
+    onSuccess: () => utils.printData.list.invalidate({ nodeId }),
   });
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteConfirmTitle, setDeleteConfirmTitle] = useState("");
 
   const handleAdd = () => {
-    createMutation
-      .mutateAsync({ paperSizeId: id })
-      .catch((err: unknown) => {
-        let msg = "추가에 실패했습니다.";
-        if (err && typeof err === "object") {
-          const e = err as { message?: string; data?: { message?: string } };
-          msg = e.data?.message ?? e.message ?? msg;
-        }
-        if (msg.includes("fetch") || msg.includes("Network") || msg.includes("Failed to fetch"))
-          msg = "API 서버에 연결할 수 없습니다. 서버가 실행 중인지, 주소/포트(예: .env의 VITE_API_URL)를 확인해 주세요.";
-        alert(msg);
-      });
+    createMutation.mutateAsync({ nodeId }).catch((err: unknown) => {
+      let msg = "추가에 실패했습니다.";
+      if (err && typeof err === "object") {
+        const e = err as { message?: string; data?: { message?: string } };
+        msg = e.data?.message ?? e.message ?? msg;
+      }
+      alert(msg);
+    });
   };
 
   const handleDeleteClick = (e: React.MouseEvent, itemId: number, itemTitle?: string | null) => {
@@ -55,40 +48,18 @@ export default function PrintDataList() {
     setDeleteConfirmTitle(itemTitle?.trim() || "");
   };
 
-  const handleConfirmDelete = () => {
-    if (deleteConfirmId == null) return;
-    deleteMutation.mutate({ id: deleteConfirmId });
-    setDeleteConfirmId(null);
-  };
-
-  const withUnit = (value?: string | null, prefix = "", suffix = "") => {
-    const v = value?.trim();
-    return v ? `${prefix}${v}${suffix}` : "—";
-  };
-
   return (
-    <div className="mx-auto max-w-content px-4 py-6 sm:px-6">
-      <header className="mb-8">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="mb-4 text-sm text-muted hover:text-foreground transition-colors"
-        >
-          ← Back
-        </button>
-        {breadcrumb.length > 0 && (
-          <p className="mb-1 text-xs text-muted truncate">{breadcrumb.join(" › ")}</p>
-        )}
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{sizeName}</h1>
-        <p className="mt-1 text-sm text-muted">인화 데이터를 선택하거나 새로 추가하세요</p>
-      </header>
+    <>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">인화 데이터</h2>
+      </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <div className="flex justify-center py-6">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       ) : (
-        <div className="space-y-3 pb-24">
+        <div className="space-y-3">
           {list.map((item) => (
             <div
               key={item.id}
@@ -98,7 +69,7 @@ export default function PrintDataList() {
                 type="button"
                 onClick={() =>
                   navigate(`/browse/print-data/${item.id}`, {
-                    state: { ...(location.state as object), sizeName, paperSizeId: id },
+                    state: { ...(location.state as object ?? {}), nodeId },
                   })
                 }
                 className="w-full px-4 py-4 text-left"
@@ -164,7 +135,7 @@ export default function PrintDataList() {
             ) : (
               <>
                 <span className="text-lg leading-none">+</span>
-                다른 데이터 추가
+                인화 데이터 추가
               </>
             )}
           </button>
@@ -183,24 +154,80 @@ export default function PrintDataList() {
             </p>
             <p className="text-sm text-red-500 mb-6">삭제된 데이터는 복구할 수 없습니다.</p>
             <div className="flex gap-2">
+              <button type="button" onClick={() => setDeleteConfirmId(null)} className="flex-1 rounded-lg border border-border py-2.5 text-sm font-medium text-foreground hover:bg-zinc-50 transition-colors">취소</button>
               <button
                 type="button"
-                onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 rounded-lg border border-border py-2.5 text-sm font-medium text-foreground hover:bg-zinc-50 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
+                onClick={() => { deleteMutation.mutate({ id: deleteConfirmId! }); setDeleteConfirmId(null); }}
                 className="flex-1 rounded-lg bg-red-500 py-2.5 text-sm font-medium text-white hover:bg-red-600 transition-colors"
-              >
-                삭제
-              </button>
+              >삭제</button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
+  );
+}
+
+// ─── NodeList Page ────────────────────────────────────────────────────────────
+
+export default function NodeList() {
+  const { nodeId: nodeIdParam } = useParams<{ nodeId?: string }>();
+  const nodeId = nodeIdParam ? Number(nodeIdParam) : null;
+  const utils = trpc.useUtils();
+
+  const { data: path = [], isLoading: pathLoading } = trpc.nodes.getPath.useQuery(
+    { id: nodeId! },
+    { enabled: nodeId != null }
+  );
+
+  const { data: children = [], isLoading: childrenLoading } = trpc.nodes.list.useQuery({ parentId: nodeId });
+
+  const addMutation = trpc.nodes.create.useMutation({
+    onSuccess: () => utils.nodes.list.invalidate({ parentId: nodeId }),
+  });
+  const deleteMutation = trpc.nodes.delete.useMutation({
+    onSuccess: () => utils.nodes.list.invalidate({ parentId: nodeId }),
+  });
+  const renameMutation = trpc.nodes.update.useMutation({
+    onSuccess: () => utils.nodes.list.invalidate({ parentId: nodeId }),
+  });
+  const copyMutation = trpc.nodes.copy.useMutation({
+    onSuccess: () => utils.nodes.list.invalidate({ parentId: nodeId }),
+  });
+
+  const navigate = useNavigate();
+
+  // path = [root, ..., current]. breadcrumb excludes the current node.
+  const breadcrumb = path.slice(0, -1).map((n) => n.name);
+  const currentName = nodeId == null
+    ? "Browse"
+    : (pathLoading ? "..." : (path[path.length - 1]?.name ?? "..."));
+
+  const isLoading = childrenLoading || (nodeId != null && pathLoading);
+
+  return (
+    <HierarchyList
+      title={currentName}
+      breadcrumb={breadcrumb}
+      items={children}
+      isLoading={isLoading}
+      onItemPress={(item) => navigate(`/browse/${item.id}`)}
+      onAddItem={async (name, description) => {
+        await addMutation.mutateAsync({ name, description, parentId: nodeId });
+      }}
+      onDeleteItem={async (item) => {
+        await deleteMutation.mutateAsync({ id: item.id });
+      }}
+      onRenameItem={async (item, newName) => {
+        await renameMutation.mutateAsync({ id: item.id, name: newName });
+      }}
+      onPasteItem={async (clipId) => {
+        await copyMutation.mutateAsync({ id: clipId, targetParentId: nodeId });
+      }}
+      emptyMessage="항목이 없습니다"
+      footerContent={nodeId != null ? (
+        <PrintDataSection nodeId={nodeId} />
+      ) : undefined}
+    />
   );
 }

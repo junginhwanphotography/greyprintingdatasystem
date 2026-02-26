@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-export type ClipboardEntityType = "camera" | "lens" | "format" | "film" | "brand" | "type" | "size";
+export type ClipboardEntityType = "node";
 
 interface ClipboardState {
   entityType: ClipboardEntityType;
@@ -44,11 +44,10 @@ interface HierarchyListProps {
   onAddItem: (name: string, description?: string) => Promise<void>;
   onDeleteItem: (item: HierarchyItem) => Promise<void>;
   onRenameItem?: (item: HierarchyItem, newName: string) => Promise<void>;
-  /** 현재 페이지 항목 유형 — 붙여넣기 호환성 판단에 사용 */
-  entityType?: ClipboardEntityType;
-  /** 클립보드의 항목을 현재 위치에 복사 */
   onPasteItem?: (clipboardId: number) => Promise<void>;
   emptyMessage?: string;
+  /** Optional content rendered below the items list (e.g. print data section) */
+  footerContent?: React.ReactNode;
 }
 
 export default function HierarchyList({
@@ -60,9 +59,9 @@ export default function HierarchyList({
   onAddItem,
   onDeleteItem,
   onRenameItem,
-  entityType,
   onPasteItem,
   emptyMessage = "항목이 없습니다",
+  footerContent,
 }: HierarchyListProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -79,7 +78,7 @@ export default function HierarchyList({
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<HierarchyItem | null>(null);
   const [clipboard, setClipboard] = useState<ClipboardState | null>(() => readClipboard());
 
-  const canPaste = !!clipboard && clipboard.entityType === entityType && !!onPasteItem;
+  const canPaste = !!clipboard && !!onPasteItem;
 
   const filteredItems = searchQuery.trim()
     ? items.filter((item) => {
@@ -136,8 +135,7 @@ export default function HierarchyList({
   };
 
   const handleCopy = (item: HierarchyItem) => {
-    if (!entityType) return;
-    const state: ClipboardState = { entityType, id: item.id, name: item.name };
+    const state: ClipboardState = { entityType: "node", id: item.id, name: item.name };
     writeClipboard(state);
     setClipboard(state);
     setMenuOpen(null);
@@ -249,7 +247,7 @@ export default function HierarchyList({
         <div className="flex items-center justify-center py-20">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
-      ) : filteredItems.length === 0 ? (
+      ) : filteredItems.length === 0 && !footerContent ? (
         <div className="rounded-2xl border border-dashed border-border bg-surface/50 py-16 text-center">
           <p className="text-sm font-medium text-muted">{emptyMessage}</p>
           <p className="mt-1 text-xs text-muted">아래 버튼으로 항목을 추가하세요</p>
@@ -262,83 +260,87 @@ export default function HierarchyList({
           </button>
         </div>
       ) : (
-        <ul className="space-y-1 pb-24">
-          {filteredItems.map((item) => (
-            <li
-              key={item.id}
-              className="group relative rounded-xl bg-surface border border-border hover:border-zinc-200 hover:shadow-sm transition-all"
-            >
-              <div className="flex items-center gap-3 px-4 py-3">
-                <button
-                  type="button"
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                  onClick={() => onItemPress(item)}
+        <div className="pb-24">
+          {filteredItems.length === 0 ? null : (
+            <ul className="space-y-1 mb-6">
+              {filteredItems.map((item) => (
+                <li
+                  key={item.id}
+                  className="group relative rounded-xl bg-surface border border-border hover:border-zinc-200 hover:shadow-sm transition-all"
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground truncate">{item.name}</p>
-                    {item.description && (
-                      <p className="mt-0.5 truncate text-xs text-muted">{item.description}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {item.childCount !== undefined && item.childCount > 0 && (
-                      <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-muted">
-                        {item.childCount}
-                      </span>
-                    )}
-                    <svg className="h-4 w-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </button>
-                <div className="relative flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)}
-                    className="rounded-md p-1.5 text-muted hover:bg-black/5 hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                    aria-label="메뉴"
-                  >
-                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                    </svg>
-                  </button>
-                  {menuOpen === item.id && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
-                      <div className="absolute right-0 top-full z-20 mt-1 w-36 rounded-lg border border-border bg-surface py-1 shadow-lg">
-                        {onRenameItem && (
-                          <button
-                            type="button"
-                            onClick={() => handleRename(item)}
-                            className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-50"
-                          >
-                            이름 변경
-                          </button>
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <button
+                      type="button"
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      onClick={() => onItemPress(item)}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground truncate">{item.name}</p>
+                        {item.description && (
+                          <p className="mt-0.5 truncate text-xs text-muted">{item.description}</p>
                         )}
-                        {entityType && (
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(item)}
-                            className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-50"
-                          >
-                            복사
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item)}
-                          className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                        >
-                          삭제
-                        </button>
                       </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {item.childCount !== undefined && item.childCount > 0 && (
+                          <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-muted">
+                            {item.childCount}
+                          </span>
+                        )}
+                        <svg className="h-4 w-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
+                    <div className="relative flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)}
+                        className="rounded-md p-1.5 text-muted hover:bg-black/5 hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        aria-label="메뉴"
+                      >
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                        </svg>
+                      </button>
+                      {menuOpen === item.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
+                          <div className="absolute right-0 top-full z-20 mt-1 w-36 rounded-lg border border-border bg-surface py-1 shadow-lg">
+                            {onRenameItem && (
+                              <button
+                                type="button"
+                                onClick={() => handleRename(item)}
+                                className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-50"
+                              >
+                                이름 변경
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(item)}
+                              className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-50"
+                            >
+                              복사
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(item)}
+                              className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {footerContent}
+        </div>
       )}
 
       {/* Add modal */}

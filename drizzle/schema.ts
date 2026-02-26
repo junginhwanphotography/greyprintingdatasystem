@@ -17,71 +17,11 @@ export const users = pgTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// ─── Grey Print Data System Tables ───────────────────────────────────────────
+// ─── Grey Print Data System — Tree Node Table ────────────────────────────────
 
-export const cameraTypes = pgTable("camera_types", {
+export const nodes = pgTable("nodes", {
   id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  sortOrder: integer("sortOrder").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
-
-export const lensGroups = pgTable("lens_groups", {
-  id: serial("id").primaryKey(),
-  cameraTypeId: integer("cameraTypeId").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  sortOrder: integer("sortOrder").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
-
-export const formats = pgTable("formats", {
-  id: serial("id").primaryKey(),
-  lensGroupId: integer("lensGroupId").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  sortOrder: integer("sortOrder").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
-
-export const filmTypes = pgTable("film_types", {
-  id: serial("id").primaryKey(),
-  formatId: integer("formatId").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  iso: varchar("iso", { length: 32 }),
-  description: text("description"),
-  sortOrder: integer("sortOrder").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
-
-export const paperBrands = pgTable("paper_brands", {
-  id: serial("id").primaryKey(),
-  filmTypeId: integer("filmTypeId").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  sortOrder: integer("sortOrder").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
-
-export const paperTypes = pgTable("paper_types", {
-  id: serial("id").primaryKey(),
-  paperBrandId: integer("paperBrandId").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  sortOrder: integer("sortOrder").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
-
-export const paperSizes = pgTable("paper_sizes", {
-  id: serial("id").primaryKey(),
-  paperTypeId: integer("paperTypeId").notNull(),
+  parentId: integer("parentId"),          // null = root level
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   sortOrder: integer("sortOrder").default(0).notNull(),
@@ -91,7 +31,8 @@ export const paperSizes = pgTable("paper_sizes", {
 
 export const printData = pgTable("print_data", {
   id: serial("id").primaryKey(),
-  paperSizeId: integer("paperSizeId").notNull(),
+  nodeId: integer("nodeId").notNull(),    // was paperSizeId
+
   title: varchar("title", { length: 255 }),
 
   exposureTime: varchar("exposureTime", { length: 64 }),
@@ -115,20 +56,7 @@ export const printData = pgTable("print_data", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
-// Type exports
-export type CameraType = typeof cameraTypes.$inferSelect;
-export type InsertCameraType = typeof cameraTypes.$inferInsert;
-export type LensGroup = typeof lensGroups.$inferSelect;
-export type InsertLensGroup = typeof lensGroups.$inferInsert;
-export type Format = typeof formats.$inferSelect;
-export type InsertFormat = typeof formats.$inferInsert;
-export type FilmType = typeof filmTypes.$inferSelect;
-export type InsertFilmType = typeof filmTypes.$inferInsert;
-export type PaperBrand = typeof paperBrands.$inferSelect;
-export type InsertPaperBrand = typeof paperBrands.$inferInsert;
-export type PaperType = typeof paperTypes.$inferSelect;
-export type InsertPaperType = typeof paperTypes.$inferInsert;
-export type PaperSize = typeof paperSizes.$inferSelect;
-export type InsertPaperSize = typeof paperSizes.$inferInsert;
+export type Node = typeof nodes.$inferSelect;
+export type InsertNode = typeof nodes.$inferInsert;
 export type PrintData = typeof printData.$inferSelect;
 export type InsertPrintData = typeof printData.$inferInsert;

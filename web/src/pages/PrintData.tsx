@@ -25,15 +25,7 @@ export default function PrintData() {
   const { printDataId } = useParams<{ printDataId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const sizeName = (location.state as { sizeName?: string })?.sizeName ?? "";
-  const breadcrumb = [
-    (location.state as { cameraName?: string })?.cameraName,
-    (location.state as { lensName?: string })?.lensName,
-    (location.state as { formatName?: string })?.formatName,
-    (location.state as { filmName?: string })?.filmName,
-    (location.state as { brandName?: string })?.brandName,
-    (location.state as { typeName?: string })?.typeName,
-  ].filter(Boolean) as string[];
+  const nodeId = (location.state as { nodeId?: number })?.nodeId;
 
   const id = Number(printDataId);
   const isDraft = Boolean((location.state as { isDraft?: boolean } | null)?.isDraft);
@@ -45,7 +37,7 @@ export default function PrintData() {
     onSuccess: () => {
       hasSavedRef.current = true;
       utils.printData.get.invalidate();
-      if (paperSizeId != null) utils.printData.list.invalidate({ paperSizeId });
+      if (dataNodeId != null) utils.printData.list.invalidate({ nodeId: dataNodeId });
     },
   });
 
@@ -82,14 +74,14 @@ export default function PrintData() {
     }
   }, [printData]);
 
-  const paperSizeId = printData?.paperSizeId ?? (location.state as { paperSizeId?: number })?.paperSizeId;
+  const dataNodeId = printData?.nodeId ?? nodeId;
   const handleSave = async () => {
-    if (paperSizeId == null) return;
+    if (dataNodeId == null) return;
     setIsSaving(true);
     try {
       await upsertMutation.mutateAsync({
         id,
-        paperSizeId,
+        nodeId: dataNodeId,
         title: title.trim() || undefined,
         ...Object.fromEntries(
           Object.entries(fields).map(([k, v]) => [k, v.trim() || undefined])
@@ -170,9 +162,6 @@ export default function PrintData() {
         >
           ← Back
         </button>
-        {breadcrumb.length > 0 && (
-          <p className="mb-1 text-xs text-muted truncate">{breadcrumb.join(" › ")}</p>
-        )}
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
             {isEditing ? (
@@ -191,7 +180,7 @@ export default function PrintData() {
               />
             ) : (
               <h1 className="text-xl font-semibold tracking-tight text-foreground truncate">
-                {title.trim() || sizeName}
+                {title.trim() || "인화 데이터"}
               </h1>
             )}
           </div>
