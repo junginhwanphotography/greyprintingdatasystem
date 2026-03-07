@@ -37,7 +37,13 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
-        <div className="mx-auto flex h-14 max-w-content items-center justify-end px-4 sm:px-6">
+        <div className="mx-auto flex h-14 max-w-content items-center justify-between px-4 sm:px-6">
+          <Link
+            to="/browse"
+            className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+          >
+            Grey Printing
+          </Link>
           <button
             type="button"
             onClick={() => setSearchOpen(true)}

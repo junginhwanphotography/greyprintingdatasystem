@@ -229,9 +229,9 @@ export default function SearchModal({ open, onClose, onSelectResult }: SearchMod
             </div>
           ) : isError ? (
             <div className="rounded-2xl border border-border bg-surface/50 py-10 px-4 text-center">
-              <p className="text-sm font-medium text-muted">검색 요청에 실패했습니다</p>
+              <p className="text-sm font-medium text-muted">검색 서버에 연결할 수 없습니다</p>
               <p className="mt-1 text-xs text-muted">
-                API 서버 연결을 확인해 주세요. (웹과 API 포트가 맞는지 확인)
+                배포 사이트에서는 검색 API가 잠시 깨어나는 중일 수 있습니다. 아래 버튼으로 다시 시도해 주세요.
               </p>
               <button
                 type="button"

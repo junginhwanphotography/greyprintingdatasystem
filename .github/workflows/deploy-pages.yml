@@ -33,9 +33,12 @@ jobs:
         working-directory: web
 
       - name: Build web
-        run: npm run build
+        run: |
+          export VITE_API_URL="${VITE_API_URL:-https://grey-printing-api.onrender.com}"
+          npm run build
         working-directory: web
         env:
+          # 배포 시 API 주소. Secrets에 VITE_API_URL 설정 시 사용, 없으면 Render 기본 URL
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       - name: SPA fallback
