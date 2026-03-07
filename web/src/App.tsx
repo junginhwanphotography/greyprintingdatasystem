@@ -6,7 +6,6 @@ import NodeList from "./pages/NodeList";
 import PrintData from "./pages/PrintData";
 import Data from "./pages/Data";
 import Add from "./pages/Add";
-import Search from "./pages/Search";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -28,7 +27,6 @@ export default function App() {
           <Route path="browse/print-data/:printDataId" element={<PrintData />} />
           <Route path="data" element={<Data />} />
           <Route path="add" element={<Add />} />
-          <Route path="search" element={<Search />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

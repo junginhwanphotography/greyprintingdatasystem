@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import SearchModal from "../components/SearchModal";
 
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [fabOpen, setFabOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -15,6 +17,12 @@ export default function Layout() {
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [fabOpen]);
+
+  useEffect(() => {
+    const open = () => setSearchOpen(true);
+    window.addEventListener("open-global-search", open);
+    return () => window.removeEventListener("open-global-search", open);
+  }, []);
 
   const handleItemAdd = () => {
     setFabOpen(false);
@@ -36,34 +44,25 @@ export default function Layout() {
           >
             Grey Printing
           </Link>
-          <nav className="flex items-center gap-1">
-            <NavLink
-              to="/browse"
-              className={({ isActive }) =>
-                `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted hover:text-foreground hover:bg-black/5"
-                }`
-              }
-            >
-              Browse
-            </NavLink>
-            <NavLink
-              to="/search"
-              className={({ isActive }) =>
-                `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted hover:text-foreground hover:bg-black/5"
-                }`
-              }
-            >
-              Search
-            </NavLink>
-          </nav>
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="rounded-md p-2 text-muted hover:bg-black/5 hover:text-foreground transition-colors"
+            title="검색"
+            aria-label="검색"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
         </div>
       </header>
+
+      <SearchModal
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onSelectResult={(id) => navigate(`/browse/${id}`)}
+      />
       <main className="flex-1">
         <Outlet />
       </main>

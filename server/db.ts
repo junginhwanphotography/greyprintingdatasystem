@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { sql } from "drizzle-orm";
 import postgres from "postgres";
 import * as memoryStore from "./_core/memoryStore";
+import { SEARCH_SYNONYMS } from "./searchSynonyms.js";
 import {
   users, nodes, printData,
   type InsertUser, type InsertNode, type InsertPrintData,
@@ -218,11 +219,158 @@ export async function listAllNodesWithPath(): Promise<{ id: number; name: string
   return allNodes.map((n) => ({ id: n.id, name: n.name, path: buildPath(n.id) }));
 }
 
-export async function searchNodes(query: string) {
+export type SearchNodeResult = { id: number; name: string; description: string | null; path: string };
+
+/** 검색 결과 없을 때 추천 검색어 (한글→영문 등) */
+export function getSearchSuggestions(query: string): string[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const out = new Set<string>();
+  const tokens = q.split(/\s+/).filter((t) => t.length > 0);
+  for (const token of tokens) {
+    for (const [ko, enList] of Object.entries(SEARCH_SYNONYMS)) {
+      if (token.includes(ko) || ko.includes(token)) {
+        enList.forEach((en) => out.add(en));
+        out.add(ko);
+      }
+      for (const en of enList) {
+        if (token.includes(en) || en.includes(token)) {
+          out.add(en);
+          out.add(ko);
+        }
+      }
+    }
+  }
+  return [...out].filter((s) => s.toLowerCase() !== q).slice(0, 6);
+}
+
+/** 각 토큰에 대해 검색할 때 쓸 문자열 목록 (원본 + 동의어, 소문자) */
+function getMatchTerms(token: string): string[] {
+  const lower = token.toLowerCase().trim();
+  if (!lower) return [];
+  const terms = new Set<string>([lower]);
+  for (const [ko, enList] of Object.entries(SEARCH_SYNONYMS)) {
+    if (lower.includes(ko) || ko.includes(lower)) {
+      terms.add(ko);
+      enList.forEach((en) => terms.add(en));
+    }
+    for (const en of enList) {
+      if (lower.includes(en) || en.includes(lower)) {
+        terms.add(en);
+        terms.add(ko);
+      }
+    }
+  }
+  return [...terms];
+}
+
+/** 토큰에 글자(한글/영문)가 포함되면 단어형, 숫자만 있으면 숫자형 */
+function isWordLikeToken(token: string): boolean {
+  return /[a-z가-힣\u3131-\u318e\uac00-\ud7a3]/.test(token);
+}
+
+function scoreNode(
+  name: string,
+  path: string,
+  pathSegments: string[],
+  tokenMatchTerms: string[][],
+  rawTokens: string[]
+): number {
+  const nameLower = name.toLowerCase();
+  const pathLower = path.toLowerCase();
+  let baseScore = 0;
+  let matchedTokenGroups = 0;
+  let wordLikeGroupsMatched = 0;
+  for (let g = 0; g < tokenMatchTerms.length; g++) {
+    const terms = tokenMatchTerms[g];
+    const raw = rawTokens[g];
+    let groupScore = 0;
+    for (const t of terms) {
+      if (!t) continue;
+      if (nameLower === t) groupScore += 20;
+      else if (nameLower.startsWith(t)) groupScore += 10;
+      else if (nameLower.includes(t)) groupScore += 5;
+      if (pathLower.includes(t)) groupScore += 2;
+    }
+    if (groupScore > 0) {
+      matchedTokenGroups += 1;
+      if (raw && isWordLikeToken(raw)) wordLikeGroupsMatched += 1;
+    }
+    baseScore += groupScore;
+  }
+  const groupBonus = tokenMatchTerms.length > 1 ? matchedTokenGroups * 50 : 0;
+  const wordBonus = wordLikeGroupsMatched * 25;
+
+  let segmentsMatched = 0;
+  for (const seg of pathSegments) {
+    const segLower = seg.toLowerCase();
+    if (tokenMatchTerms.some((terms) => terms.some((t) => t && segLower.includes(t))))
+      segmentsMatched += 1;
+  }
+  const segmentBonus = segmentsMatched * 40;
+
+  const nameExactBonus = tokenMatchTerms.some((terms) =>
+    terms.some((t) => t && nameLower === t)
+  )
+    ? 30
+    : 0;
+
+  return baseScore + groupBonus + wordBonus + segmentBonus + nameExactBonus;
+}
+
+/** name 또는 path가 해당 토큰의 matchTerms 중 하나라도 포함하면 true */
+function tokenMatches(name: string, path: string, terms: string[]): boolean {
+  const nl = name.toLowerCase();
+  const pl = path.toLowerCase();
+  return terms.some((t) => t && (nl.includes(t) || pl.includes(t)));
+}
+
+export async function searchNodesWithPath(query: string): Promise<SearchNodeResult[]> {
   const db = await getDb();
-  if (!db) return memoryStore.searchNodes(query);
-  const pattern = `%${query}%`;
-  return db.select().from(nodes).where(like(nodes.name, pattern)).limit(50);
+  if (!db) return memoryStore.searchNodesWithPath(query);
+
+  const allNodes = await db.select().from(nodes).orderBy(asc(nodes.sortOrder), asc(nodes.name));
+  const byId = new Map(allNodes.map((n) => [n.id, n]));
+
+  function buildPath(nodeId: number): string {
+    const parts: string[] = [];
+    let cur: (typeof allNodes)[0] | undefined = byId.get(nodeId);
+    while (cur) {
+      parts.unshift(cur.name);
+      cur = cur.parentId != null ? byId.get(cur.parentId) : undefined;
+    }
+    return parts.join(" › ");
+  }
+
+  const rawTokens = query.trim().split(/\s+/).filter((t) => t.length > 0);
+  if (rawTokens.length === 0) return [];
+
+  const tokenMatchTerms = rawTokens.map((t) => getMatchTerms(t)).filter((a) => a.length > 0);
+  const rawTokensAligned = rawTokens.filter((t) => getMatchTerms(t).length > 0);
+
+  const withPath = allNodes.map((n) => ({
+    id: n.id,
+    name: n.name,
+    description: n.description,
+    path: buildPath(n.id),
+  }));
+
+  const matched = withPath
+    .map((n) => {
+      const pathSegments = n.path ? n.path.split(" › ") : [];
+      return {
+        ...n,
+        score: scoreNode(n.name, n.path, pathSegments, tokenMatchTerms, rawTokensAligned),
+      };
+    })
+    .filter((n) => {
+      if (n.score <= 0) return false;
+      return tokenMatchTerms.some((terms) => tokenMatches(n.name, n.path, terms));
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 50);
+
+  return matched.map(({ id, name, description, path }) => ({ id, name, description, path }));
 }
 
 // ─── Print Data ───────────────────────────────────────────────────────────────

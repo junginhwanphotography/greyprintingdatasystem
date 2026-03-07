@@ -3,6 +3,8 @@
  * Supports flexible tree-based hierarchy (any depth) + print data.
  */
 
+import { SEARCH_SYNONYMS } from "../searchSynonyms.js";
+
 let _lastId = 0;
 const nextId = () => ++_lastId;
 
@@ -114,9 +116,88 @@ export function listAllNodesWithPath(): { id: number; name: string; path: string
     }));
 }
 
-export function searchNodes(query: string): NodeRecord[] {
-  const q = query.toLowerCase();
-  return _nodes.filter((n) => n.name.toLowerCase().includes(q)).slice(0, 50);
+function getMatchTerms(token: string): string[] {
+  const lower = token.toLowerCase().trim();
+  if (!lower) return [];
+  const terms = new Set<string>([lower]);
+  for (const [ko, enList] of Object.entries(SEARCH_SYNONYMS)) {
+    if (lower.includes(ko) || ko.includes(lower)) {
+      terms.add(ko);
+      enList.forEach((en) => terms.add(en));
+    }
+    for (const en of enList) {
+      if (lower.includes(en) || en.includes(lower)) { terms.add(en); terms.add(ko); }
+    }
+  }
+  return [...terms];
+}
+
+function tokenMatches(name: string, path: string, terms: string[]): boolean {
+  const nl = name.toLowerCase();
+  const pl = path.toLowerCase();
+  return terms.some((t) => t && (nl.includes(t) || pl.includes(t)));
+}
+
+export function searchNodesWithPath(query: string): { id: number; name: string; description: string | null; path: string }[] {
+  const rawTokens = query.trim().split(/\s+/).filter((t) => t.length > 0);
+  if (rawTokens.length === 0) return [];
+
+  const tokenMatchTerms = rawTokens.map((t) => getMatchTerms(t)).filter((a) => a.length > 0);
+  const rawTokensAligned = rawTokens.filter((t) => getMatchTerms(t).length > 0);
+
+  const withPath = _nodes.map((n) => ({
+    id: n.id,
+    name: n.name,
+    description: n.description,
+    path: getNodePath(n.id).map((p) => p.name).join(" › "),
+  }));
+
+  function isWordLikeToken(token: string): boolean {
+    return /[a-z가-힣\u3131-\u318e\uac00-\ud7a3]/.test(token);
+  }
+
+  const score = (name: string, path: string) => {
+    const nl = name.toLowerCase();
+    const pl = path.toLowerCase();
+    const pathSegments = path ? path.split(" › ") : [];
+    let baseScore = 0;
+    let matchedGroups = 0;
+    let wordLikeMatched = 0;
+    for (let g = 0; g < tokenMatchTerms.length; g++) {
+      const terms = tokenMatchTerms[g];
+      const raw = rawTokensAligned[g];
+      let scoreG = 0;
+      for (const t of terms) {
+        if (nl === t) scoreG += 20;
+        else if (nl.startsWith(t)) scoreG += 10;
+        else if (nl.includes(t)) scoreG += 5;
+        if (pl.includes(t)) scoreG += 2;
+      }
+      if (scoreG > 0) {
+        matchedGroups += 1;
+        if (raw && isWordLikeToken(raw)) wordLikeMatched += 1;
+      }
+      baseScore += scoreG;
+    }
+    const groupBonus = tokenMatchTerms.length > 1 ? matchedGroups * 50 : 0;
+    const wordBonus = wordLikeMatched * 25;
+    let segmentsMatched = 0;
+    for (const seg of pathSegments) {
+      const segLower = seg.toLowerCase();
+      if (tokenMatchTerms.some((terms) => terms.some((t) => t && segLower.includes(t))))
+        segmentsMatched += 1;
+    }
+    const segmentBonus = segmentsMatched * 40;
+    const nameExactBonus = tokenMatchTerms.some((terms) => terms.some((t) => t && nl === t)) ? 30 : 0;
+    return baseScore + groupBonus + wordBonus + segmentBonus + nameExactBonus;
+  };
+
+  return withPath
+    .map((n) => ({ ...n, _score: score(n.name, n.path) }))
+    .filter((n) => n._score > 0 && tokenMatchTerms.some((terms) => tokenMatches(n.name, n.path, terms)))
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 50)
+    .map(({ _score: _, ...n }) => n);
 }
 
 // ─── Print Data ───────────────────────────────────────────────────────────────

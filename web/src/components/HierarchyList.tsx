@@ -67,26 +67,16 @@ export default function HierarchyList({
   const location = useLocation();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [selectedItem, setSelectedItem] = useState<HierarchyItem | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isPasting, setIsPasting] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState<number | null>(null);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<HierarchyItem | null>(null);
   const [clipboard, setClipboard] = useState<ClipboardState | null>(() => readClipboard());
 
   const canPaste = !!clipboard && !!onPasteItem;
-
-  const filteredItems = searchQuery.trim()
-    ? items.filter((item) => {
-        const query = searchQuery.toLowerCase();
-        const keywords = query.split(/[\s,]+/).filter((k) => k.length > 0);
-        return keywords.every((kw) => item.name.toLowerCase().includes(kw));
-      })
-    : items;
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
@@ -202,7 +192,7 @@ export default function HierarchyList({
           <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
           <button
             type="button"
-            onClick={() => setShowSearchModal(true)}
+            onClick={() => window.dispatchEvent(new CustomEvent("open-global-search"))}
             className="rounded-md p-2 text-muted hover:bg-black/5 hover:text-foreground transition-colors"
             title="검색"
           >
@@ -247,7 +237,7 @@ export default function HierarchyList({
         <div className="flex items-center justify-center py-20">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
-      ) : filteredItems.length === 0 && !footerContent ? (
+      ) : items.length === 0 && !footerContent ? (
         <div className="rounded-2xl border border-dashed border-border bg-surface/50 py-16 text-center">
           <p className="text-sm font-medium text-muted">{emptyMessage}</p>
           <p className="mt-1 text-xs text-muted">아래 버튼으로 항목을 추가하세요</p>
@@ -261,9 +251,9 @@ export default function HierarchyList({
         </div>
       ) : (
         <div className="pb-24">
-          {filteredItems.length === 0 ? null : (
+          {items.length === 0 ? null : (
             <ul className="space-y-1 mb-6">
-              {filteredItems.map((item) => (
+              {items.map((item) => (
                 <li
                   key={item.id}
                   className="group relative rounded-xl bg-surface border border-border hover:border-zinc-200 hover:shadow-sm transition-all"
@@ -461,52 +451,6 @@ export default function HierarchyList({
         </div>
       )}
 
-      {/* Search modal */}
-      {showSearchModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20" onClick={() => { setShowSearchModal(false); setSearchQuery(""); }}>
-          <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-2xl bg-surface shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="text-lg font-semibold text-foreground">검색</h3>
-              <button
-                type="button"
-                onClick={() => { setShowSearchModal(false); setSearchQuery(""); }}
-                className="rounded-md p-1.5 text-muted hover:bg-zinc-100 hover:text-foreground transition-colors"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <input
-              type="text"
-              placeholder="검색어 입력"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="mx-4 mt-3 rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary"
-              autoFocus
-            />
-            {searchQuery.trim() && (
-              <p className="mx-4 mt-2 text-xs text-muted">{filteredItems.length}개</p>
-            )}
-            <ul className="overflow-y-auto p-4 pt-2 max-h-64">
-              {filteredItems.map((item) => (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-zinc-50 transition-colors"
-                    onClick={() => { setShowSearchModal(false); setSearchQuery(""); onItemPress(item); }}
-                  >
-                    <span className="font-medium text-foreground">{item.name}</span>
-                    <svg className="h-4 w-4 shrink-0 text-muted ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

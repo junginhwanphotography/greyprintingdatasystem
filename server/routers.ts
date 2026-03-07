@@ -4,6 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
+import { expandQueryForSearch } from "./_core/aiSearch";
 
 export const appRouter = router({
   system: systemRouter,
@@ -67,7 +68,33 @@ export const appRouter = router({
 
     search: publicProcedure
       .input(z.object({ query: z.string().min(1) }))
-      .query(({ input }) => db.searchNodes(input.query)),
+      .query(async ({ input }) => {
+        const results = await db.searchNodesWithPath(input.query);
+        const suggestions = results.length === 0 ? db.getSearchSuggestions(input.query) : [];
+        return { results, suggestions };
+      }),
+
+    /** AI로 자연어·일부 단어를 검색 키워드로 확장한 뒤 검색 (GEMINI/OPENAI 있으면 사용) */
+    searchSmart: publicProcedure
+      .input(z.object({ query: z.string().min(1) }))
+      .query(async ({ input }) => {
+        try {
+          const expanded = await expandQueryForSearch(input.query);
+          const searchQuery = (expanded || input.query).trim();
+          if (!searchQuery) return { results: [], suggestions: [], usedAI: false };
+          const results = await db.searchNodesWithPath(searchQuery);
+          const suggestions = results.length === 0 ? db.getSearchSuggestions(searchQuery) : [];
+          const usedAI = expanded.trim().toLowerCase() !== input.query.trim().toLowerCase();
+          return { results, suggestions, usedAI };
+        } catch (err) {
+          console.warn("[searchSmart]", err);
+          const q = input.query.trim();
+          if (!q) return { results: [], suggestions: [], usedAI: false };
+          const results = await db.searchNodesWithPath(q);
+          const suggestions = results.length === 0 ? db.getSearchSuggestions(q) : [];
+          return { results, suggestions, usedAI: false };
+        }
+      }),
   }),
 
   // ─── Print Data ────────────────────────────────────────────────────────────
